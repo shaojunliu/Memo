@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+  app:
+    container_name: memo
+    # 方式一：本地构建（推荐开发/首次部署）
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # 方式二：如已推到镜像仓库，改用 image 字段（取消上面的 build）
+    # image: registry.cn-hangzhou.aliyuncs.com/<你的命名空间>/hello-java:1.0
+
+    ports:
+      - "8080:8080"
+    restart: always
+    environment:
+      # 放一些常见 JVM / Spring 配置（可删）
+      # - JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=75 -XX:+UseContainerSupport
+      - TZ=Asia/Shanghai
+    # 如果需要把宿主机目录挂进去（例如外部配置/日志），可按需打开：
+    # volumes:
+    #   - ./logs:/app/logs
+    #   - ./config:/app/config
+
+    # 依赖网络/代理时可以这样写（可选）
+    # network_mode: bridge
+
+    # 资源限制（可选，轻量机型建议适度限制）
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '1.0'
+    #       memory: 1024M
