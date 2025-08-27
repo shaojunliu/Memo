@@ -7,6 +7,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class MemoController {
     @GetMapping("/memo")
     public String home() {
-        return "Hello from Dockerized Memo!";
+        return "Test for CI/CD";
     }
 }
