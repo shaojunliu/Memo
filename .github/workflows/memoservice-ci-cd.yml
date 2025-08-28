@@ -11,6 +11,7 @@ env:
   COMPOSE_FILE: ${{ secrets.COMPOSE_FILE || 'docker-compose.yml' }}
   COMPOSE_SRC: docker-compose.yml
   COMPOSE_DST: ${{ secrets.COMPOSE_FILE || 'docker-compose.yml' }}
+  SERVICE_NAME: app
 
 jobs:
   build-and-push:
@@ -96,6 +97,6 @@ jobs:
           script: |
             docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" -p "${{ secrets.GHCR_READ_TOKEN }}"
             cd "${{ env.DEPLOY_PATH }}"
-            docker compose -f "${{ env.COMPOSE_DST }}" pull memoservice
-            docker compose -f "${{ env.COMPOSE_DST }}" up -d memoservice
+            docker compose -f "${{ env.COMPOSE_DST }}" pull ${{ env.SERVICE_NAME }}
+            docker compose -f "${{ env.COMPOSE_DST }}" up -d ${{ env.SERVICE_NAME }}
             docker system prune -f
