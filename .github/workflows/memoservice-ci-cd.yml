@@ -9,6 +9,8 @@ env:
   IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/memoservice
   DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/apps/stack' }}
   COMPOSE_FILE: ${{ secrets.COMPOSE_FILE || 'docker-compose.prod.yml' }}
+  COMPOSE_SRC: deploy/docker-compose.prod.yml
+  COMPOSE_DST: ${{ secrets.COMPOSE_FILE || 'docker-compose.prod.yml' }}
 
 jobs:
   build-and-push:
@@ -48,7 +50,30 @@ jobs:
           tags: |
             ${{ env.IMAGE_NAME }}:latest
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
+  upload-compose:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upload compose to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }} # 或用 key_path 的做法
+          source: ${{ env.COMPOSE_SRC }}
+          target: ${{ env.DEPLOY_PATH }}
 
+      - name: Move to final name
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            mkdir -p "${{ env.DEPLOY_PATH }}"
+            mv -f "${{ env.DEPLOY_PATH }}/$(basename ${{ env.COMPOSE_SRC }})" \
+                  "${{ env.DEPLOY_PATH }}/${{ env.COMPOSE_DST }}"
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
@@ -63,6 +88,6 @@ jobs:
           script: |
             docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" -p "${{ secrets.GHCR_READ_TOKEN }}"
             cd "${{ env.DEPLOY_PATH }}"
-            docker compose -f "${{ env.COMPOSE_FILE }}" pull memoservice
-            docker compose -f "${{ env.COMPOSE_FILE }}" up -d memoservice
+            docker compose -f "${{ env.COMPOSE_DST }}" pull memoservice
+            docker compose -f "${{ env.COMPOSE_DST }}" up -d memoservice
             docker system prune -f
