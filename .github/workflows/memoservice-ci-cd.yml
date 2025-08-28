@@ -8,9 +8,9 @@ on:
 env:
   IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/memoservice
   DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/apps/stack' }}
-  COMPOSE_FILE: ${{ secrets.COMPOSE_FILE || 'docker-compose.prod.yml' }}
-  COMPOSE_SRC: deploy/docker-compose.prod.yml
-  COMPOSE_DST: ${{ secrets.COMPOSE_FILE || 'docker-compose.prod.yml' }}
+  COMPOSE_FILE: ${{ secrets.COMPOSE_FILE || 'docker-compose.yml' }}
+  COMPOSE_SRC: docker-compose.yml
+  COMPOSE_DST: ${{ secrets.COMPOSE_FILE || 'docker-compose.yml' }}
 
 jobs:
   build-and-push:
@@ -51,7 +51,7 @@ jobs:
             ${{ env.IMAGE_NAME }}:latest
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
   upload-compose:
-    needs: build-and-push
+    needs: upload-compose
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
