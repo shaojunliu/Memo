@@ -96,6 +96,8 @@ jobs:
           script: |
             docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" -p "${{ secrets.GHCR_READ_TOKEN }}"
             cd "${{ env.DEPLOY_PATH }}"
+            # 如果有老的 memo 容器，还在占 8080，这里强制删掉
+            docker rm -f memo 2>/dev/null || true
             docker compose -f "${{ env.COMPOSE_DST }}" pull ${{ env.SERVICE_NAME }}
             docker compose -f "${{ env.COMPOSE_DST }}" up -d ${{ env.SERVICE_NAME }}
             docker system prune -f
