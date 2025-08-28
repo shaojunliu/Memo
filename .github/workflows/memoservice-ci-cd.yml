@@ -11,8 +11,7 @@ env:
   COMPOSE_FILE: ${{ secrets.COMPOSE_FILE || 'docker-compose.yml' }}
   COMPOSE_SRC: docker-compose.yml
   COMPOSE_DST: ${{ secrets.COMPOSE_FILE || 'docker-compose.yml' }}
-  SERVICE_NAME: app
-
+  SERVICE_NAME: ${{ secrets.MEMO_SERVICE_NAME || 'memoservice' }}  # 默认 memoservice
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
