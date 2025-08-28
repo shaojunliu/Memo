@@ -51,7 +51,7 @@ jobs:
             ${{ env.IMAGE_NAME }}:latest
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
   upload-compose:
-    needs: upload-compose
+    needs: build-and-push
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -75,7 +75,7 @@ jobs:
             mv -f "${{ env.DEPLOY_PATH }}/$(basename ${{ env.COMPOSE_SRC }})" \
                   "${{ env.DEPLOY_PATH }}/${{ env.COMPOSE_DST }}"
   deploy:
-    needs: build-and-push
+    needs: upload-compose
     runs-on: ubuntu-latest
     steps:
       - name: SSH deploy
