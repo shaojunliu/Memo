@@ -71,9 +71,17 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
+            set -e
             mkdir -p "${{ env.DEPLOY_PATH }}"
-            mv -f "${{ env.DEPLOY_PATH }}/$(basename ${{ env.COMPOSE_SRC }})" \
-                  "${{ env.DEPLOY_PATH }}/${{ env.COMPOSE_DST }}"
+            SRC="${{ env.DEPLOY_PATH }}/${{ env.COMPOSE_SRC }}"
+            DST="${{ env.DEPLOY_PATH }}/${{ env.COMPOSE_DST }}"
+            if [ "$SRC" != "$DST" ]; then
+              mkdir -p "$(dirname "$DST")"
+              mv -f "$SRC" "$DST"
+            else
+              echo "Source equals destination ($SRC). Skip move."
+            fi
+            
   deploy:
     needs: upload-compose
     runs-on: ubuntu-latest
