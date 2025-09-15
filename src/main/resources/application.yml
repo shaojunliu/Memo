@@ -1,0 +1,24 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:wx;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false
+    driver-class-name: org.h2.Driver
+    username: "memo"
+    password: "admin"
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+# 微信/登录配置
+  # •	appid：在微信小程序后台（mp.weixin.qq.com → 开发 → 开发管理 → 开发设置）里能找到。
+  #  •	secret：同样在后台 → 开发设置里有“AppSecret”，需要点击生成。
+wx:
+  appid: # 小程序 AppID
+  secret: # 小程序 AppSecret
+  mock: true        # 本地开发先用 mock：true（根据 code 生成虚拟 openid）
+jwt:
+  secret: change-this-to-a-very-strong-secret-key-change-this   # 至少32字节
+  ttl-seconds: 604800   # 7天

@@ -1,4 +1,4 @@
-package org.Memo.hello;
+package org.Memo;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

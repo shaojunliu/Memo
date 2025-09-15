@@ -1,4 +1,4 @@
-package org.Memo.hello;
+package org.Memo.Controller;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
