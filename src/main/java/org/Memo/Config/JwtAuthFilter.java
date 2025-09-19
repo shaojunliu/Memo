@@ -10,10 +10,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 @Configuration
 public class JwtAuthFilter extends OncePerRequestFilter {
@@ -37,6 +41,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         .build()
                         .parseClaimsJws(token)
                         .getBody();
+                Long uid = Long.valueOf(c.getSubject());
+                // 放一个已认证对象到 SecurityContext（可带角色）
+                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                        uid,  // principal（你也可以自定义 UserDetails）
+                        null,
+                        List.of(new SimpleGrantedAuthority("ROLE_USER"))
+                );
+                SecurityContextHolder.getContext().setAuthentication(authentication);
                 req.setAttribute("uid", Long.valueOf(c.getSubject()));
             } catch (Exception e) {
                 resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

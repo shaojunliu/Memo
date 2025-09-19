@@ -18,13 +18,26 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(reg -> reg
-                        .requestMatchers("/api/auth/wx/login").permitAll()
+        http
+                // H2 Console 需要关闭 CSRF（开发环境）
+                .csrf(csrf -> csrf.disable())
+
+                // 放行登录与 H2 Console，其余请求需要认证
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/auth/wx/login", "/h2-console/**").permitAll()
                         .anyRequest().authenticated()
                 )
+
+                // 允许 H2 Console 的 <frame>，不然页面会空白/被拦
+                .headers(headers -> headers.frameOptions(frame -> frame.disable()))
+                // 如果只想同源允许也可以：.headers(h -> h.frameOptions().sameOrigin())
+
+                // 你的 JWT 过滤器负责解析 token 并写入 SecurityContext
                 .addFilterBefore(jwtAuthFilter, AnonymousAuthenticationFilter.class)
+
+                // 如无 Basic 认证需求可以去掉；保留也无妨
                 .httpBasic(Customizer.withDefaults());
+
         return http.build();
     }
 }

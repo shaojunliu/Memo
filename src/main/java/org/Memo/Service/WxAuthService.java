@@ -1,5 +1,7 @@
 package org.Memo.Service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.Memo.DTO.*;
 import org.Memo.Entity.User;
 import org.Memo.Repo.UserRepository;
@@ -8,13 +10,17 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Date;
 
+@Slf4j
 @Service
 public class WxAuthService {
 
@@ -32,6 +38,7 @@ public class WxAuthService {
     private long jwtTtlSeconds;
 
     private final RestTemplate restTemplate = new RestTemplate();
+    private final ObjectMapper objectMapper = new ObjectMapper();
     private final UserRepository userRepo;
 
     public WxAuthService(UserRepository userRepo) {
@@ -39,18 +46,23 @@ public class WxAuthService {
     }
 
     public LoginResponse loginOrRegister(LoginRequest req, String ip) {
+        // 调用wx code2session接口
         Code2SessionResp wx = mock ? mockResp(req.getCode()) : code2Session(req.getCode());
+        log.info("code2SessionResp:{}", wx);
         if (wx.openid == null) {
             throw new RuntimeException("wx login failed: " + wx.errcode + " - " + wx.errmsg);
         }
 
+        // 拿到全局唯一id openId 查找或存储用户信息
         User u = userRepo.findByOpenId(wx.openid).orElseGet(() -> {
             User nu = new User();
             nu.setOpenId(wx.openid);
             nu.setUnionId(wx.unionid);
             nu.setNickname(req.getNickname());
             nu.setAvatarUrl(req.getAvatarUrl());
-            nu.setCreatedAt(Instant.now());
+            Instant now = Instant.now();
+            ZonedDateTime beijingTime = now.atZone(ZoneId.of("Asia/Shanghai"));
+            nu.setCreatedAt(beijingTime.toInstant());
             return userRepo.save(nu);
         });
 
@@ -82,8 +94,18 @@ public class WxAuthService {
                 + "&secret=" + secret
                 + "&js_code=" + code
                 + "&grant_type=authorization_code";
+        log.info("Code2Session_url:{}",url);
 
-        return restTemplate.getForObject(url, Code2SessionResp.class);
+
+        try {
+            ResponseEntity<String> resp = restTemplate.getForEntity(url,  String.class);
+            String body = resp.getBody();
+            // 可选：调试日志
+            log.info("code2Session raw: " + body + " | ct=" + resp.getHeaders().getContentType());
+            return objectMapper.readValue(body, Code2SessionResp.class);
+        } catch (Exception e) {
+            throw new RuntimeException("code2Session failed: " + e);
+        }
     }
 
     private Code2SessionResp mockResp(String code) {

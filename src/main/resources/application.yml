@@ -3,22 +3,30 @@ server:
 
 spring:
   datasource:
-    url: jdbc:h2:mem:wx;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false
-    driver-class-name: org.h2.Driver
-    username: "memo"
-    password: "admin"
+    url: ${DB_URL:jdbc:h2:mem:wx;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false}
+    driver-class-name: ${DB_DRIVER:org.h2.Driver}
+    username: memo
+    password: HPLB_20250817
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${DB_DDL_AUTO:update}   # 测试用 update，生产改 validate
     show-sql: true
+  h2:
+    console:
+      enabled: true
+      path: /h2-console   # 控制台访问路径，默认也是这个http://localhost:8080/h2-console
+  security:
+    user:
+      name: memo
+      password: HPLB_20250817
+  jwt:
+    secret: 94BA4376-D314-4CFB-9064-7D753DE696DDs    # 至少32字节
+    ttl-seconds: 604800    # 7天
 
 # 微信/登录配置
   # •	appid：在微信小程序后台（mp.weixin.qq.com → 开发 → 开发管理 → 开发设置）里能找到。
   #  •	secret：同样在后台 → 开发设置里有“AppSecret”，需要点击生成。
 wx:
-  appid: # 小程序 AppID
-  secret: # 小程序 AppSecret
-  mock: true        # 本地开发先用 mock：true（根据 code 生成虚拟 openid）
-jwt:
-  secret: change-this-to-a-very-strong-secret-key-change-this   # 至少32字节
-  ttl-seconds: 604800   # 7天
+  appid: wx24a59aa9e1797a8d
+  secret: 06ab9e3e03d2448385e6bcac5d09746d
+  mock: false

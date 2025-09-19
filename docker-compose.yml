@@ -19,8 +19,11 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/memo?currentSchema=public
+      DB_DRIVER: org.postgresql.Driver
+      DB_DDL_AUTO: validate
 
-   
   agent:
     image: ghcr.io/shaojunliu/agent:latest
     container_name: agent
