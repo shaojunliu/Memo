@@ -9,7 +9,7 @@ services:
       - "${SERVER_PORT:-8080}:8080"                # ← 外部端口：环境变量优先，默认8080
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      test: ["CMD", "wget -qO- http://localhost:8080/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5

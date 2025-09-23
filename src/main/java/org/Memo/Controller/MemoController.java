@@ -9,4 +9,9 @@ public class MemoController {
     public String home() {
         return "health！login pg";
     }
+
+    @GetMapping("/health")
+    public String health() {
+        return "health！login pg";
+    }
 }

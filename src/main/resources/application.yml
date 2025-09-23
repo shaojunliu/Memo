@@ -1,6 +1,14 @@
 server:
   port: 8080
-
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info"
+  endpoint:
+    health:
+      probes:
+        enabled: true   # 提供 /actuator/health/readiness 等
 spring:
   datasource:
     url: ${DB_URL:jdbc:h2:mem:wx;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false}
@@ -19,9 +27,9 @@ spring:
     user:
       name: memo
       password: HPLB_20250817
-  jwt:
-    secret: 94BA4376-D314-4CFB-9064-7D753DE696DDs    # 至少32字节
-    ttl-seconds: 604800    # 7天
+jwt:
+  secret: B7v5oaYr_wEHlBKz9SrVMCYHea2884j7RrNG_qXdr6lNbkNswd5RCjIAxSUvqcZ_iSm_d8FAGW8sRsN7-mDs8g==    # 至少32字节
+  ttl-seconds: 604800    # 7天
 
 # 微信/登录配置
   # •	appid：在微信小程序后台（mp.weixin.qq.com → 开发 → 开发管理 → 开发设置）里能找到。
