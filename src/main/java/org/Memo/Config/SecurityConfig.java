@@ -24,7 +24,8 @@ public class SecurityConfig {
 
                 // 放行登录与 H2 Console，其余请求需要认证
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/wx/login", "/h2-console/**").permitAll()
+                        .requestMatchers("/api/auth/wx/login", "/h2-console/**"
+                                ,"/health" ).permitAll()
                         .anyRequest().authenticated()
                 )
 
