@@ -13,11 +13,13 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:h2:mem:wx;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false}
     driver-class-name: ${DB_DRIVER:org.h2.Driver}
-    username: HPLB
-    password: 20250817
+    username: ${DB_USER:HPLB}
+    password: ${DB_PASS:20250817}
   jpa:
     hibernate:
       ddl-auto: ${DB_DDL_AUTO:update}   # 测试用 update，生产改 validate
+    properties:
+      hibernate.dialect: ${DB_DIALECT:org.hibernate.dialect.H2Dialect}
     show-sql: true
   h2:
     console:
