@@ -22,7 +22,10 @@ services:
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/memo?currentSchema=public
       DB_DRIVER: org.postgresql.Driver
+      DB_DIALECT: org.hibernate.dialect.PostgreSQLDialect
       DB_DDL_AUTO: validate
+      DB_USER: HPLB
+      DB_PASS: 20250817
 
   agent:
     image: ghcr.io/shaojunliu/agent:latest
