@@ -1,5 +1,19 @@
 # /apps/stack/docker-compose.yml
+networks:
+  appnet:
+
 services:
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    environment:
+      POSTGRES_DB: memo
+      POSTGRES_USER: HPLB
+      POSTGRES_PASSWORD: 20250817
+    ports:
+      - "5432:5432"
+    networks:
+      - appnet
   memoservice:
     image: ghcr.io/shaojunliu/memoservice:latest   # ← 镜像来源：GHCR
     container_name: memoservice
@@ -7,6 +21,8 @@ services:
       - /apps/stack/.env                           # ← 你的环境变量文件（在服务器）
     ports:
       - "${SERVER_PORT:-8080}:8080"                # ← 外部端口：环境变量优先，默认8080
+    networks:
+      - appnet
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget -qO- http://localhost:8080/health || exit 1"]
