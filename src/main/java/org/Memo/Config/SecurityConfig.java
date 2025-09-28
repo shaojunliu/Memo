@@ -35,7 +35,7 @@ public class SecurityConfig {
                 // 你的 JWT 过滤器负责解析 token 并写入 SecurityContext
                 .addFilterBefore(jwtAuthFilter, AnonymousAuthenticationFilter.class)
 
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt());
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
 
         return http.build();
     }
