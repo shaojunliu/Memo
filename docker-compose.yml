@@ -25,7 +25,7 @@ services:
       - appnet
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget -qO- http://localhost:8080/health || exit 1"]
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080' || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
