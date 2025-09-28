@@ -40,3 +40,9 @@ wx:
   appid: wx24a59aa9e1797a8d
   secret: 06ab9e3e03d2448385e6bcac5d09746d
   mock: false
+
+agent:
+  base-url: http://127.0.0.1:8001
+  api-key: HPLB_20250817
+  connect-timeout-ms: 2000
+  read-timeout-ms: 8000

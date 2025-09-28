@@ -2,10 +2,9 @@ package org.Memo.Controller;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
-import org.Memo.DTO.LoginRequest;
-import org.Memo.DTO.LoginResponse;
+import org.Memo.DTO.Login.LoginRequest;
+import org.Memo.DTO.Login.LoginResponse;
 import org.Memo.Service.WxAuthService;
-import org.springframework.jmx.export.annotation.ManagedMetric;
 import org.springframework.web.bind.annotation.*;
 
 @Slf4j
