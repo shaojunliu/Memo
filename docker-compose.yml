@@ -57,6 +57,10 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+    environment:
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY}
+      AGENT_API_KEY: ${AGENT_API_KEY}
+      OPEN_API_KEY: ${OPEN_API_KEY}
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
