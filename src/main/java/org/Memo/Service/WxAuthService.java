@@ -2,7 +2,8 @@ package org.Memo.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.Memo.DTO.*;
+import org.Memo.DTO.Login.LoginRequest;
+import org.Memo.DTO.Login.LoginResponse;
 import org.Memo.Entity.User;
 import org.Memo.Repo.UserRepository;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -50,6 +51,7 @@ public class WxAuthService {
         Code2SessionResp wx = mock ? mockResp(req.getCode()) : code2Session(req.getCode());
         log.info("code2SessionResp:{}", wx);
         if (wx.openid == null) {
+
             throw new RuntimeException("wx login failed: " + wx.errcode + " - " + wx.errmsg);
         }
 

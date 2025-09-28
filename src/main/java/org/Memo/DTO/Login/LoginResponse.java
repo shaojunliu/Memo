@@ -1,4 +1,4 @@
-package org.Memo.DTO;
+package org.Memo.DTO.Login;
 
 import lombok.Data;
 
