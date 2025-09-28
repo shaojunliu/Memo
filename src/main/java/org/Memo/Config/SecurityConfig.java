@@ -24,8 +24,7 @@ public class SecurityConfig {
 
                 // 放行登录与 H2 Console，其余请求需要认证
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/wx/login", "/h2-console/**"
-                                ,"/health" ).permitAll()
+                        .requestMatchers("/api/auth/wx/login", "/h2-console/**","/health" ).permitAll()
                         .anyRequest().authenticated()
                 )
 
@@ -36,8 +35,7 @@ public class SecurityConfig {
                 // 你的 JWT 过滤器负责解析 token 并写入 SecurityContext
                 .addFilterBefore(jwtAuthFilter, AnonymousAuthenticationFilter.class)
 
-                // 如无 Basic 认证需求可以去掉；保留也无妨
-                .httpBasic(Customizer.withDefaults());
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt());
 
         return http.build();
     }
