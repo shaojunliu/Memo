@@ -1,23 +1,49 @@
 package org.Memo.Entity;
 
 import jakarta.persistence.*;      // ★ Spring Boot 3 必须是 jakarta 包
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.Builder;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Entity
 @Data
-@Table(name = "chatRecord")// ★ 避开 user 这样的保留字
+@Table(name = "chat_record")
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class ChatRecord {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(name="open_id", unique = true, nullable = false)
+
+    @Column(name = "open_id", nullable = false, length = 128)
     private String openId;
 
-    private String userMessage;
-    private String agentReply;
-    private Instant createdAt;
+    @Column(name = "session_id", nullable = false, unique = true, columnDefinition = "UUID")
+    private UUID sessionId;
 
-    public ChatRecord() {}
+    @Column(name = "started_at", nullable = false)
+    private Instant startedAt;
+
+    @Column(name = "closed_at")
+    private Instant closedAt;
+
+    @Column(name = "message_count", nullable = false)
+    private Integer messageCount;
+
+    @Column(name = "last_ts")
+    private Instant lastTs;
+
+    @Version // 使用 JPA 乐观锁，对应 version 列
+    @Column(name = "version", nullable = false)
+    private Long version;
+
+    // 用 String 映射 jsonb（简单直观）；需要时再换 JsonNode
+    @Column(name = "msgs", nullable = false, columnDefinition = "jsonb")
+    private String msgs;
+
 }
