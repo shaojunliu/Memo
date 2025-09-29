@@ -42,6 +42,7 @@ services:
       DB_DDL_AUTO: validate
       DB_USER: HPLB
       DB_PASS: 20250817
+      APP_AGENT_BASE_URL: http://agent:8001
 
   agent:
     image: ghcr.io/shaojunliu/agent:latest

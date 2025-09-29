@@ -42,7 +42,7 @@ wx:
   mock: false
 
 agent:
-  base-url: http://agent:8001
+  base-url: ${APP_AGENT_BASE_URL:http://agent:8001}
   api-key: HPLB_20250817
   connect-timeout-ms: 2000
   read-timeout-ms: 8000
