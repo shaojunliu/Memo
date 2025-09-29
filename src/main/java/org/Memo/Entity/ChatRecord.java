@@ -45,7 +45,7 @@ public class ChatRecord {
     private Long version;
 
     // 用 String 映射 jsonb（简单直观）；需要时再换 JsonNode
-    @Column(name = "msgs", nullable = false, columnDefinition = "jsonb")
+    @Column(name = "msgs", columnDefinition = "jsonb")
     private String msgs;
 
 }
