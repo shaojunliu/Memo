@@ -43,7 +43,7 @@ public class OkHttpAgentClient implements AgentClient {
             RequestBody body = RequestBody.create(json, MediaType.parse("application/json"));
 
             Request.Builder rb = new Request.Builder()
-                    .url(baseUrl + "/chat")   // 你的 Python Agent 的 HTTP Chat 路由
+                    .url(baseUrl + "/ws/chat")
                     .post(body);
 
             boolean apiKeyUnEmpty = !StringUtils.isEmpty(apiKey);
