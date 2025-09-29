@@ -43,7 +43,6 @@ public class ChatRecordService {
                 .messageCount(0)
                 .lastTs(now)
                 .version(0L)
-                .msgs("[]")
                 .build();
         return repo.save(r);
     }

@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.Builder;
+import org.hibernate.annotations.DynamicInsert;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -14,6 +15,7 @@ import java.util.UUID;
 @Table(name = "chat_record")
 @NoArgsConstructor
 @AllArgsConstructor
+@DynamicInsert   // 让 null 字段不出现在 INSERT 语句里，从而使用 PG 默认值
 @Builder
 public class ChatRecord {
     @Id
