@@ -1,7 +1,8 @@
 # /apps/stack/docker-compose.yml
 networks:
   appnet:
-    driver: bridge
+    external: true
+    name: stack_appnet
 
 services:
   postgres:
