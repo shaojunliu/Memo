@@ -12,16 +12,16 @@ import java.util.concurrent.TimeUnit;
 
 @Component
 public class OkHttpAgentClient implements AgentClient {
-    @Value("${app.agent.url}")
+    @Value("${agent.url}")
     private String ws_url;
 
-    @Value("${app.agent.api-key:}")
+    @Value("${agent.api-key:}")
     private String apiKey;
 
-    @Value("${app.agent.connect-timeout-ms:5000}")
+    @Value("${agent.connect-timeout-ms:5000}")
     private int connectTimeoutMs;
 
-    @Value("${app.agent.reply-timeout-ms:15000}")
+    @Value("${agent.reply-timeout-ms:15000}")
     private int replyTimeoutMs;
 
     private final OkHttpClient wsClient = new OkHttpClient.Builder()
