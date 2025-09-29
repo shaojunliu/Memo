@@ -12,62 +12,55 @@ import java.util.concurrent.TimeUnit;
 
 @Component
 public class OkHttpAgentClient implements AgentClient {
-    private final OkHttpClient client;
-    private final ObjectMapper mapper = new ObjectMapper();
-    private final String baseUrl;
-    private final String apiKey;
+    @Value("${app.agent.url}")
+    private String ws_url;
 
-    public OkHttpAgentClient(
-            @Value("${agent.base-url}") String baseUrl,
-            @Value("${agent.api-key:}") String apiKey,
-            @Value("${agent.connect-timeout-ms:2000}") int connectTimeoutMs,
-            @Value("${agent.read-timeout-ms:8000}") int readTimeoutMs
-    ) {
-        this.baseUrl = baseUrl;
-        this.apiKey = apiKey;
-        this.client = new OkHttpClient.Builder()
-                .connectTimeout(connectTimeoutMs, TimeUnit.MILLISECONDS)
-                .readTimeout(readTimeoutMs, TimeUnit.MILLISECONDS)
-                .retryOnConnectionFailure(true)
-                .build();
-    }
+    @Value("${app.agent.api-key:}")
+    private String apiKey;
+
+    @Value("${app.agent.connect-timeout-ms:5000}")
+    private int connectTimeoutMs;
+
+    @Value("${app.agent.reply-timeout-ms:15000}")
+    private int replyTimeoutMs;
+
+    private final OkHttpClient wsClient = new OkHttpClient.Builder()
+            .connectTimeout(5, TimeUnit.SECONDS)
+            .readTimeout(0, TimeUnit.MILLISECONDS) // WS 长连接读不超时
+            .build();
 
     @Override
     public String chat(String userId, String message) {
+        String url = trimEnd(ws_url);
+        String json = "{\"openid\":\"" + escape(userId) + "\",\"message\":\"" + escape(message) + "\"}";
+        Request.Builder builder = new Request.Builder()
+                .url(url)
+                .post(RequestBody.create(json, MediaType.parse("application/json")));
+
+        if (apiKey != null && !apiKey.isBlank()) {
+            builder.addHeader("X-AGENT-KEY", apiKey);
+        }
         try {
-            ChatRequest req = new ChatRequest();
-            req.setUserId(userId);
-            req.setMessage(message);
+            Request req = builder.build();
 
-            String json = mapper.writeValueAsString(req);
-            RequestBody body = RequestBody.create(json, MediaType.parse("application/json"));
-
-            Request.Builder rb = new Request.Builder()
-                    .url(baseUrl + "/ws/chat")
-                    .post(body);
-
-            boolean apiKeyUnEmpty = !StringUtils.isEmpty(apiKey);
-            if (apiKeyUnEmpty) {
-                rb.addHeader("X-AGENT-KEY", apiKey);
-            }
-
-            try (Response resp = client.newCall(rb.build()).execute()) {
-                if (!resp.isSuccessful()) {
-                    throw new RuntimeException("Agent HTTP " + resp.code() + " - " + resp.message());
+            try (Response resp = wsClient.newCall(req).execute()) {
+                if (!resp.isSuccessful() || resp.body() == null) {
+                    String body = resp.body() != null ? resp.body().string() : "";
+                    throw new RuntimeException("Agent HTTP " + resp.code() + " - " + resp.message() + " " + body);
                 }
-                String respStr = resp.body() != null ? resp.body().string() : "";
-                // 若 Python 直接返回纯文本：
-                if (!respStr.trim().startsWith("{")) return respStr;
-
-                // 若返回 JSON，解析为 ChatResponse：
-                ChatResponse cr = mapper.readValue(respStr, ChatResponse.class);
-                return cr.getReply();
+                return resp.body().string();
+            } catch (Exception e) {
+                throw new RuntimeException("Call Agent failed", e);
             }
+
         } catch (Exception e) {
             // 这里可以结合你的日志/告警体系
             throw new RuntimeException("Call Agent failed", e);
         }
     }
+    private static String trimEnd(String s){ return s.endsWith("/") ? s.substring(0, s.length()-1) : s; }
+    private static String normalize(String p){ return p.startsWith("/") ? p : "/" + p; }
+    private static String escape(String s){ return s == null ? "" : s.replace("\\","\\\\").replace("\"","\\\""); }
 
 
 }
