@@ -1,6 +1,7 @@
 # /apps/stack/docker-compose.yml
 networks:
   appnet:
+    driver: bridge
 
 services:
   postgres:
@@ -51,6 +52,8 @@ services:
       - /apps/stack/.env
     ports:
       - "${AGENT_PORT:-8001}:8001"
+    networks:
+      - appnet
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8001/healthz"]
@@ -65,8 +68,3 @@ services:
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
-    # networks:
-    #   - prod
-# networks:
-#   prod:
-#     driver: bridge
