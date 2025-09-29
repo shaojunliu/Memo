@@ -43,6 +43,5 @@ wx:
 
 agent:
   url: ${APP_AGENT_BASE_URL:ws://agent:8001/ws/chat}
-  api-key: HPLB_20250817
   connect-timeout-ms: 2000
   read-timeout-ms: 8000
