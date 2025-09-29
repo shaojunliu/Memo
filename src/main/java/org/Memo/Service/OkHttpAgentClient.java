@@ -1,6 +1,7 @@
 package org.Memo.Service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,27 +19,22 @@ public class OkHttpAgentClient implements AgentClient {
     @Value("${agent.url}")
     private String ws_url;
 
-    @Value("${agent.api-key:}")
-    private String apiKey;
-
-    @Value("${agent.connect-timeout-ms:5000}")
-    private int connectTimeoutMs;
-
-    @Value("${agent.reply-timeout-ms:15000}")
-    private int replyTimeoutMs;
-
     private final OkHttpClient client = new OkHttpClient.Builder()
             .connectTimeout(5, TimeUnit.SECONDS)
             .readTimeout(0, TimeUnit.MILLISECONDS) // WS 长连接读不超时
             .build();
 
+    @jakarta.annotation.PostConstruct
+    void logCfg() {
+        log.info("WS cfg baseUrl={}",ws_url);
+        if (!ws_url.startsWith("ws://") && !ws_url.startsWith("wss://")) {
+            throw new IllegalStateException("app.agent.base-url 必须是 ws:// 或 wss://，当前=" + ws_url);
+        }
+    }
     /** 一问一答：发一条，收第一段回复返回（如需拼接流式，可扩展） */
     public String chat(String openid, String message) {
         String url = trimEnd(ws_url);
         Request.Builder rb = new Request.Builder().url(url);
-        if (apiKey != null && !apiKey.isBlank()) {
-            rb.addHeader("X-AGENT-KEY", apiKey);  // ✅ 按你要求加到 Header
-        }
         Request req = rb.build();
 
         CountDownLatch done = new CountDownLatch(1);
