@@ -8,7 +8,7 @@ import java.time.Instant;
  */
 public record MsgItem(
         int seq,           // 会话内序号
-        @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSX", timezone = "UTC")
+        @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSX")
         Instant ts,        // 时间戳，直接用 Instant
         String role,       // "user" / "assistant"
         String content     // 消息内容

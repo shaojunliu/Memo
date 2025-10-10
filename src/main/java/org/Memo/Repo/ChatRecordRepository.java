@@ -37,7 +37,25 @@ public interface ChatRecordRepository extends JpaRepository<ChatRecord, Long> {
                       @Param("ts") Instant ts,
                       @Param("ver") long currentVersion);
 
+
+    // 拉取该 open_id 在当日内的所有会话记录（用于展开 msgs）
+    @Query(value = """
+        SELECT *
+        FROM chat_record cr
+        WHERE cr.open_id = :openId
+          AND cr.started_at >= :start
+          AND COALESCE(cr.closed_at, cr.last_ts) < :end
+        ORDER BY cr.started_at ASC, cr.id ASC
+        """, nativeQuery = true)
     List<ChatRecord> findMessagesByOpenIdAndDay(String openId, ZonedDateTime dayStart, ZonedDateTime dayEnd);
+
+    // 当日所有 open_id（去重）
+    @Query(value = """
+        SELECT DISTINCT cr.open_id
+        FROM chat_record cr
+        WHERE cr.started_at >= :start
+          AND COALESCE(cr.closed_at, cr.last_ts) < :end
+        """, nativeQuery = true)
     List<String> findDistinctOpenIdsByDay(ZonedDateTime dayStart, ZonedDateTime dayEnd);
 
 }
