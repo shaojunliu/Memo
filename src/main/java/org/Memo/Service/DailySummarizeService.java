@@ -38,7 +38,7 @@ public class DailySummarizeService {
         // 简单并行（注意限速/线程池）
         openIds.parallelStream().forEach(openId -> {
             try {
-                if (summaryRepo.exists(openId, targetDate)) return; // 幂等跳过
+                if (summaryRepo.existsByOpenIdAndSummaryDate(openId, targetDate)) return; // 幂等跳过
 
                 List<ChatRecord> msgs = chatRepo.findMessagesByOpenIdAndDay(openId, start, end);
                 if (msgs == null || msgs.isEmpty()) return;

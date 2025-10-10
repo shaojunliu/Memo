@@ -32,5 +32,12 @@ public interface DailyArticleSummaryRepository extends JpaRepository<DailyArticl
                        @Param("tokenUsageJson") String tokenUsageJson);
 
     /** 判断是否存在记录 */
-    boolean exists(String openId, LocalDate summaryDate);
+    @Query(value = """
+    SELECT COUNT(1) > 0
+    FROM daily_article_summary
+    WHERE open_id = :openId
+      AND summary_date = :summaryDate
+    """, nativeQuery = true)
+    boolean existsByOpenIdAndSummaryDate(@Param("openId") String openId,
+                   @Param("summaryDate") LocalDate summaryDate);
 }
