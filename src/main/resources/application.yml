@@ -19,7 +19,10 @@ spring:
     hibernate:
       ddl-auto: ${DB_DDL_AUTO:update}   # 测试用 update，生产改 validate
     properties:
-      hibernate.dialect: ${DB_DIALECT:org.hibernate.dialect.H2Dialect}
+      hibernate:
+        dialect: ${DB_DIALECT:org.hibernate.dialect.H2Dialect}
+        jdbc:
+          time_zone: Asia/Shanghai
     show-sql: true
   h2:
     console:
@@ -29,6 +32,8 @@ spring:
     user:
       name: memo
       password: HPLB_20250817
+  jackson:
+    time-zone: Asia/Shanghai           # 全局 JSON 序列化/反序列化使用东八区
 jwt:
   secret: B7v5oaYr_wEHlBKz9SrVMCYHea2884j7RrNG_qXdr6lNbkNswd5RCjIAxSUvqcZ_iSm_d8FAGW8sRsN7-mDs8g==    # 至少32字节
   ttl-seconds: 604800    # 7天
@@ -42,6 +47,11 @@ wx:
   mock: false
 app:
   tz: "Asia/Shanghai"
+  summarize:
+    cron-weekly: "0 0 0 ? * SUN"   # 每周日 00:00（若需要周回顾）
+    cron-daily: "0 5 0 * * ?"     # 每天 00:05 跑“昨天”
+    parallelism: 8
+    maxRetries: 3
 summarize:
   cron-weekly: "0 0 0 ? * SUN"   # 每周日 00:00
   cron-daily:  "0 5 0 * * ?"     # 可选：每天 00:05 跑前一天
