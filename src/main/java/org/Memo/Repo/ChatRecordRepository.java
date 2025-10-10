@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 public interface ChatRecordRepository extends JpaRepository<ChatRecord, Long> {
@@ -34,4 +36,8 @@ public interface ChatRecordRepository extends JpaRepository<ChatRecord, Long> {
                       @Param("item") String itemJson,
                       @Param("ts") Instant ts,
                       @Param("ver") long currentVersion);
+
+    List<ChatRecord> findMessagesByOpenIdAndDay(String openId, ZonedDateTime dayStart, ZonedDateTime dayEnd);
+    List<String> findDistinctOpenIdsByDay(ZonedDateTime dayStart, ZonedDateTime dayEnd);
+
 }

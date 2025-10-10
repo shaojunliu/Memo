@@ -40,8 +40,15 @@ wx:
   appid: wx24a59aa9e1797a8d
   secret: 06ab9e3e03d2448385e6bcac5d09746d
   mock: false
-
+app:
+  tz: "Asia/Shanghai"
+summarize:
+  cron-weekly: "0 0 0 ? * SUN"   # 每周日 00:00
+  cron-daily:  "0 5 0 * * ?"     # 可选：每天 00:05 跑前一天
+  parallelism: 8
+  maxRetries: 3
 agent:
   url: ${APP_AGENT_BASE_URL:ws://agent:8001/ws/chat}
+  summarize-path: ${APP_AGENT_BASE_URL:ws://agent:8001/summarize/day}
   connect-timeout-ms: 2000
   read-timeout-ms: 8000
