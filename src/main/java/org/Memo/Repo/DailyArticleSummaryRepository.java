@@ -12,17 +12,19 @@ import java.time.LocalDate;
 public interface DailyArticleSummaryRepository extends JpaRepository<DailyArticleSummaryEntity, Long> {
     /** UPSERT 逻辑：存在则更新，否则插入 */
     @Transactional
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """
-        INSERT INTO daily_article_summary(open_id, summary_date, article, mood_keywords, model, token_usage, created_at, updated_at)
+        INSERT INTO daily_article_summary(
+            open_id, summary_date, article, mood_keywords, model, token_usage, created_at, updated_at
+        )
         VALUES(:openId, :summaryDate, :article, :moodKeywords, :model, CAST(:tokenUsageJson AS jsonb), NOW(), NOW())
         ON CONFLICT (open_id, summary_date)
         DO UPDATE SET
-            article = EXCLUDED.article,
+            article       = EXCLUDED.article,
             mood_keywords = EXCLUDED.mood_keywords,
-            model = EXCLUDED.model,
-            token_usage = EXCLUDED.token_usage,
-            updated_at = NOW()
+            model         = EXCLUDED.model,
+            token_usage   = EXCLUDED.token_usage,
+            updated_at    = NOW()
         """, nativeQuery = true)
     void upsertSummary(@Param("openId") String openId,
                        @Param("summaryDate") LocalDate summaryDate,
@@ -32,12 +34,5 @@ public interface DailyArticleSummaryRepository extends JpaRepository<DailyArticl
                        @Param("tokenUsageJson") String tokenUsageJson);
 
     /** 判断是否存在记录 */
-    @Query(value = """
-    SELECT COUNT(1) > 0
-    FROM daily_article_summary
-    WHERE open_id = :openId
-      AND summary_date = :summaryDate
-    """, nativeQuery = true)
-    boolean existsByOpenIdAndSummaryDate(@Param("openId") String openId,
-                   @Param("summaryDate") LocalDate summaryDate);
+    boolean existsByOpenIdAndSummaryDate(String openId, LocalDate summaryDate);
 }
