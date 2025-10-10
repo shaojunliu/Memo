@@ -26,10 +26,8 @@ public class DailyArticleSummaryEntity {
     @Column(name = "summary_date", nullable = false)
     private LocalDate summaryDate;
 
-    @Lob
-    @Column(name = "article", nullable = false)
+    @Column(name = "article", nullable = false, columnDefinition = "text")
     private String article;
-
     @Column(name = "mood_keywords", nullable = false)
     private String moodKeywords;
 
