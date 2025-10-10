@@ -18,7 +18,8 @@ public class SummarizeOpsController {
     private final DailySummarizeService service;
 
     @PostMapping("/daily")
-    public String daily(@RequestParam String date, @RequestParam(defaultValue = "Asia/Shanghai") String tz) {
+    public String daily(@RequestParam("date") String date,
+                        @RequestParam(value = "tz", defaultValue = "Asia/Shanghai") String tz) {
         LocalDate d = LocalDate.parse(date); // 例如 2025-10-10
         service.summarizeForDate(d);
         return "OK " + d;
