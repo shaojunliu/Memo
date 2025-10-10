@@ -1,7 +1,5 @@
 package org.Memo.Controller.ws;
 
-import java.io.IOException;
-
 import jakarta.websocket.*;
 import jakarta.websocket.server.PathParam;
 import jakarta.websocket.server.ServerEndpoint;
@@ -14,12 +12,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.time.Instant;
 import java.util.UUID;
 
 @ServerEndpoint(value = "/ws/chat/{openid}", configurator = SpringEndpointConfigurator.class)
