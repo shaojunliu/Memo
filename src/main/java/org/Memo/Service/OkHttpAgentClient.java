@@ -89,6 +89,7 @@ public class OkHttpAgentClient implements AgentClient {
             headers.setContentType(MediaType.APPLICATION_JSON);
             String reqJson = MAPPER.writeValueAsString(req);
 
+            log.info("reqJson={}", reqJson);
             HttpEntity<String> entity = new HttpEntity<>(reqJson, headers);
 
             // 调用 Agent 服务
