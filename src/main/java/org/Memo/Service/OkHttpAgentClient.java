@@ -7,6 +7,8 @@ import okhttp3.*;
 import org.Memo.DTO.Chat.SummarizeResult;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.net.URLEncoder;
@@ -68,6 +70,9 @@ public class OkHttpAgentClient implements AgentClient {
      */
     @Override
     public SummarizeResult summarizeDay(String openId, String packedText) {
+        SummarizeResult defaultSummarizeResult = new SummarizeResult();
+        defaultSummarizeResult.setArticle("Agent 返回空响应");
+        defaultSummarizeResult.setMoodKeywords("sad,sad,sad");
         try {
             // 建议的统一协议：带 type，便于 Agent 路由
             Map<String, Object> req = Map.of(
@@ -79,10 +84,7 @@ public class OkHttpAgentClient implements AgentClient {
 
             String resp = sendAndWaitOnce(reqJson, Duration.ofSeconds(timeoutSeconds));
             if (resp == null || resp.isBlank()) {
-                SummarizeResult summarizeResult = new SummarizeResult();
-                summarizeResult.setArticle("Agent 返回空响应");
-                summarizeResult.setMoodKeywords("null,null,null");
-                return summarizeResult;
+                return defaultSummarizeResult;
             }
 
             // 1) 首选：JSON 结果
@@ -92,11 +94,9 @@ public class OkHttpAgentClient implements AgentClient {
                 } catch (Exception jsonEx) {
                     // 兼容某些 Agent 返回键名不同的情况（可做一次小型映射）
                     Map<String, Object> m = MAPPER.readValue(resp, new TypeReference<Map<String, Object>>() {});
-                    String article = str(m.get("article"));
-                    String mood    = str(m.get("moodKeywords"));
-                    String model   = str(m.get("model"));
-                    String usage   = str(m.get("tokenUsageJson"));
-                    return new SummarizeResult(article, mood, model, usage);
+                    String article = str(Optional.ofNullable(m.get("article")).orElse("Agent 返回空响应"));
+                    String mood    = str(Optional.ofNullable("sad,sad,sad"));
+                    return new SummarizeResult(article, mood, "default", "");
                 }
             }
 
@@ -104,15 +104,12 @@ public class OkHttpAgentClient implements AgentClient {
             return parsePlaintextToResult(resp);
 
         } catch (Exception e) {
-            SummarizeResult summarizeResult = new SummarizeResult();
-            summarizeResult.setArticle(e.toString());
-            summarizeResult.setMoodKeywords("null,null,null");
-            return summarizeResult;
+            return defaultSummarizeResult;
         }
     }
 
     private SummarizeResult parsePlaintextToResult(String text) {
-        String article = "";
+        String article = "parsePlaintextToResult error";
         String mood = "";
         try {
             Matcher m1 = P_SUMMARY.matcher(text);
