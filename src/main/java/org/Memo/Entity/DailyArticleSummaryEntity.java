@@ -28,7 +28,7 @@ public class DailyArticleSummaryEntity {
 
     @Column(name = "article", nullable = false, columnDefinition = "text")
     private String article;
-    @Column(name = "mood_keywords", nullable = false)
+    @Column(name = "mood_keywords")
     private String moodKeywords;
 
     @Column(name = "model")
