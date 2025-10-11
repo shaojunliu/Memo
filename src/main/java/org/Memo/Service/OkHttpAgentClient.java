@@ -1,7 +1,6 @@
 package org.Memo.Service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.Memo.DTO.Chat.SummarizeResult;
@@ -20,6 +19,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.time.Duration;
 import com.fasterxml.jackson.core.type.TypeReference;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 
 
 @Slf4j
@@ -70,65 +73,49 @@ public class OkHttpAgentClient implements AgentClient {
      */
     @Override
     public SummarizeResult summarizeDay(String openId, String packedText) {
-        SummarizeResult defaultSummarizeResult = new SummarizeResult();
-        defaultSummarizeResult.setArticle("Agent 返回空响应");
-        defaultSummarizeResult.setMoodKeywords("sad,sad,sad");
+        SummarizeResult defaultResult = new SummarizeResult("Agent 返回空响应", "sad,sad,sad", "qwen", "{}");
+
         try {
-            // 建议的统一协议：带 type，便于 Agent 路由
+            RestTemplate restTemplate = new RestTemplate();
+            ObjectMapper MAPPER = new ObjectMapper();
+
             Map<String, Object> req = Map.of(
                     "type", "daily_summary",
                     "openid", openId == null ? "" : openId,
                     "text", packedText
             );
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
             String reqJson = MAPPER.writeValueAsString(req);
 
-            String resp = sendAndWaitOnce(reqJson, Duration.ofSeconds(timeoutSeconds));
-            if (resp == null || resp.isBlank()) {
-                return defaultSummarizeResult;
-            }
+            HttpEntity<String> entity = new HttpEntity<>(reqJson, headers);
 
-            // 1) 首选：JSON 结果
-            if (looksLikeJson(resp)) {
+            // 调用 Agent 服务
+            String url = "http://agent:8001/summary/daily";
+            String resp = restTemplate.postForObject(url, entity, String.class);
+
+            if (resp == null || resp.isBlank()) return defaultResult;
+
+            // 尝试 JSON 解析
+            if (resp.trim().startsWith("{")) {
                 try {
                     return MAPPER.readValue(resp, SummarizeResult.class);
                 } catch (Exception jsonEx) {
-                    // 兼容某些 Agent 返回键名不同的情况（可做一次小型映射）
                     Map<String, Object> m = MAPPER.readValue(resp, new TypeReference<Map<String, Object>>() {});
-                    String article = str(Optional.ofNullable(m.get("article")).orElse("Agent 返回空响应"));
-                    String mood    = str(Optional.ofNullable("sad,sad,sad"));
-                    return new SummarizeResult(article, mood, "default", "");
+                    String article = Optional.ofNullable(m.get("article")).map(Object::toString).orElse(defaultResult.getArticle());
+                    String mood = Optional.ofNullable(m.get("moodKeywords")).map(Object::toString).orElse(defaultResult.getMoodKeywords());
+                    String model = Optional.ofNullable(m.get("model")).map(Object::toString).orElse("default");
+                    String tokenUsageJson = Optional.ofNullable(m.get("tokenUsageJson")).map(Object::toString).orElse("");
+                    return new SummarizeResult(article, mood, model, tokenUsageJson);
                 }
             }
-
-            // 2) 兼容：纯文本（严格遵循我们约定的输出格式）
-            return parsePlaintextToResult(resp);
+            return defaultResult;
 
         } catch (Exception e) {
-            return defaultSummarizeResult;
+            e.printStackTrace();
+            return defaultResult;
         }
-    }
-
-    private SummarizeResult parsePlaintextToResult(String text) {
-        String article = "parsePlaintextToResult error";
-        String mood = "";
-        try {
-            Matcher m1 = P_SUMMARY.matcher(text);
-            if (m1.find()) {
-                article = m1.group(1).trim();
-            }
-            Matcher m2 = P_MOOD.matcher(text);
-            if (m2.find()) {
-                mood = m2.group(1).trim();
-            }
-        } catch (Exception ignore) { /* 保底 */ }
-
-        if ((article == null || article.isBlank()) && looksLikeJson(text)) {
-            // 再保底一次：有些服务端会把 JSON 当文本发出
-            try {
-                return MAPPER.readValue(text, SummarizeResult.class);
-            } catch (Exception ignored) {}
-        }
-        return new SummarizeResult(article, mood, null, null);
     }
 
 
@@ -182,5 +169,4 @@ public class OkHttpAgentClient implements AgentClient {
     @SuppressWarnings("unused")
     private static String enc(String s){ return URLEncoder.encode(s==null?"":s, StandardCharsets.UTF_8); }
 
-    private static String str(Object o) { return o == null ? null : String.valueOf(o); }
 }
