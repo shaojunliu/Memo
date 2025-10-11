@@ -16,6 +16,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.*;
 import java.util.List;
+import java.util.Optional;
+
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 
@@ -59,7 +61,7 @@ public class DailySummarizeService {
                 summaryRepo.upsertSummary(
                         openId, targetDate,
                         res.getArticle(), res.getMoodKeywords(),
-                        res.getModel(), res.getTokenUsageJson()
+                        res.getModel(), Optional.ofNullable(res.getTokenUsageJson()).orElse("{}")
                 );
             } catch (Exception e) {
                 // 记录错误并继续其他 open_id
