@@ -47,7 +47,9 @@ public interface ChatRecordRepository extends JpaRepository<ChatRecord, Long> {
           AND COALESCE(cr.closed_at, cr.last_ts) < :end
         ORDER BY cr.started_at ASC, cr.id ASC
         """, nativeQuery = true)
-    List<ChatRecord> findMessagesByOpenIdAndDay(String openId, ZonedDateTime dayStart, ZonedDateTime dayEnd);
+    List<ChatRecord> findMessagesByOpenIdAndDay(@Param("openId") String openId,
+                                                @Param("start")  Instant start,
+                                                @Param("end")    Instant end);
 
     // 当日所有 open_id（去重）
     @Query(value = """
@@ -56,6 +58,6 @@ public interface ChatRecordRepository extends JpaRepository<ChatRecord, Long> {
         WHERE cr.started_at >= :start
           AND COALESCE(cr.closed_at, cr.last_ts) < :end
         """, nativeQuery = true)
-    List<String> findDistinctOpenIdsByDay(ZonedDateTime dayStart, ZonedDateTime dayEnd);
+    List<String> findDistinctOpenIdsByDay(@Param("start") Instant start, @Param("end")   Instant end);
 
 }
