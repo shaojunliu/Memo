@@ -79,7 +79,10 @@ public class OkHttpAgentClient implements AgentClient {
 
             String resp = sendAndWaitOnce(reqJson, Duration.ofSeconds(timeoutSeconds));
             if (resp == null || resp.isBlank()) {
-                throw new RuntimeException("Agent 返回空响应");
+                SummarizeResult summarizeResult = new SummarizeResult();
+                summarizeResult.setArticle("Agent 返回空响应");
+                summarizeResult.setMoodKeywords("null,null,null");
+                return summarizeResult;
             }
 
             // 1) 首选：JSON 结果
@@ -101,8 +104,10 @@ public class OkHttpAgentClient implements AgentClient {
             return parsePlaintextToResult(resp);
 
         } catch (Exception e) {
-            log.error("summarizeDay 调用失败 openId={}, err={}", openId, e.toString(), e);
-            throw new RuntimeException("Agent WS summarizeDay 失败", e);
+            SummarizeResult summarizeResult = new SummarizeResult();
+            summarizeResult.setArticle(e.toString());
+            summarizeResult.setMoodKeywords("null,null,null");
+            return summarizeResult;
         }
     }
 
