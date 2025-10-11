@@ -11,21 +11,23 @@ import java.time.LocalDate;
 
 public interface DailyArticleSummaryRepository extends JpaRepository<DailyArticleSummaryEntity, Long> {
     /** UPSERT 逻辑：存在则更新，否则插入 */
+    @Modifying
     @Transactional
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """
-        INSERT INTO daily_article_summary(
-            open_id, summary_date, article, mood_keywords, model, token_usage, created_at, updated_at
-        )
-        VALUES(:openId, :summaryDate, :article, :moodKeywords, :model, CAST(:tokenUsageJson AS jsonb), NOW(), NOW())
-        ON CONFLICT (open_id, summary_date)
-        DO UPDATE SET
-            article       = EXCLUDED.article,
-            mood_keywords = EXCLUDED.mood_keywords,
-            model         = EXCLUDED.model,
-            token_usage   = EXCLUDED.token_usage,
-            updated_at    = NOW()
-        """, nativeQuery = true)
+    INSERT INTO daily_article_summary(
+        open_id, summary_date, article, mood_keywords, model, token_usage, created_at, updated_at
+    )
+    VALUES(:openId, :summaryDate, :article, :moodKeywords, :model,
+           CAST(COALESCE(NULLIF(:tokenUsageJson, ''), '{}') AS jsonb),
+           NOW(), NOW())
+    ON CONFLICT (open_id, summary_date)
+    DO UPDATE SET
+        article       = EXCLUDED.article,
+        mood_keywords = EXCLUDED.mood_keywords,
+        model         = EXCLUDED.model,
+        token_usage   = EXCLUDED.token_usage,
+        updated_at    = NOW()
+    """, nativeQuery = true)
     void upsertSummary(@Param("openId") String openId,
                        @Param("summaryDate") LocalDate summaryDate,
                        @Param("article") String article,
