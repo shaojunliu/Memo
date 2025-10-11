@@ -11,6 +11,8 @@ import org.Memo.Repo.DailyArticleSummaryRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -31,8 +33,8 @@ public class DailySummarizeService {
 
     public void summarizeForDate(LocalDate targetDate) {
         ZoneId zone = ZoneId.of(tz);
-        ZonedDateTime start = targetDate.atStartOfDay(zone);
-        ZonedDateTime end   = start.plusDays(1);
+        Instant start = targetDate.atStartOfDay(zone).toInstant();
+        Instant end   = targetDate.atStartOfDay(zone).plusDays(1).toInstant();
 
         List<String> openIds = chatRepo.findDistinctOpenIdsByDay(start, end);
         // 简单并行（注意限速/线程池）
