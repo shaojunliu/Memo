@@ -16,13 +16,14 @@ services:
       - "5432:5432"
     networks:
       - appnet
+
   memoservice:
-    image: ghcr.io/shaojunliu/memoservice:latest   # ← 镜像来源：GHCR
+    image: ghcr.io/shaojunliu/memoservice:latest
     container_name: memoservice
     env_file:
-      - /apps/stack/.env                           # ← 你的环境变量文件（在服务器）
-    ports:
-      - "${SERVER_PORT:-8080}:8080"                # ← 外部端口：环境变量优先，默认8080
+      - /apps/stack/.env
+    expose:
+      - "8080"                   # 仅容器网络内可访问
     networks:
       - appnet
     restart: unless-stopped
@@ -44,15 +45,15 @@ services:
       DB_DDL_AUTO: validate
       DB_USER: HPLB
       DB_PASS: 20250817
-      APP_AGENT_BASE_URL: ws://agent:8001/ws/chat
+      APP_AGENT_BASE_URL: ws://agent:8001/ws/chat   # 内网调用
 
   agent:
     image: ghcr.io/shaojunliu/agent:latest
     container_name: agent
     env_file:
       - /apps/stack/.env
-    ports:
-      - "${AGENT_PORT:-8001}:8001"
+    expose:
+      - "8001"                   # 仅容器网络内可访问（不对公网）
     networks:
       - appnet
     restart: unless-stopped
@@ -69,3 +70,37 @@ services:
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
+
+  nginx:
+    image: nginx:alpine
+    container_name: memo-nginx
+    depends_on:
+      - memoservice
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /apps/stack/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - /apps/stack/certbot/www:/var/www/certbot
+      - /apps/stack/letsencrypt:/etc/letsencrypt
+    networks:
+      - appnet
+    restart: unless-stopped
+
+  # 首次签发证书用的一次性容器；签发成功后即可不再使用
+  certbot_init:
+    image: certbot/certbot
+    container_name: certbot-init
+    volumes:
+      - /apps/stack/certbot/www:/var/www/certbot
+      - /apps/stack/letsencrypt:/etc/letsencrypt
+    entrypoint: ["/bin/sh","-c"]
+    # 把 memo.example.com 和邮箱改成你的
+    command: >
+      "certbot certonly --webroot
+       -w /var/www/certbot
+       -d hplb.top
+       --email liu_shaojun@yeah.net
+       --agree-tos
+       --non-interactive
+       || true"
