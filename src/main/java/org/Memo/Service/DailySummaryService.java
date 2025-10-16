@@ -1,6 +1,8 @@
 package org.Memo.Service;
 import lombok.RequiredArgsConstructor;
 import org.Memo.DTO.DaillySummarysModel;
+import org.Memo.DTO.GetSummaryDetailReq;
+import org.Memo.DTO.GetSummaryDetailRes;
 import org.Memo.DTO.SummaryModel;
 import org.Memo.Entity.DailyArticleSummaryEntity;
 import org.Memo.Repo.DailyArticleSummaryRepository;
