@@ -51,11 +51,16 @@ public class DailySummaryService {
         DateParts p = resolveDateParts(e);
 
         return SummaryModel.builder()
+                .articleId(e.getId() == null?"":e.getId().toString())
                 .article(e.getArticle() == null ? "" : e.getArticle())
+                .articleTitle(e.getArticleTitle() == null ? "" : e.getArticleTitle())
                 .moodKeywords(e.getMoodKeywords() == null ? "" : e.getMoodKeywords())
+                .actionKeywords(e.getActionKeywords() == null ? "" : e.getActionKeywords())
+                .creatTime(e.getSummaryDate().atStartOfDay(ZoneId.of("Asia/Shanghai")).toInstant().toEpochMilli())
                 .year(p.year)
                 .month(p.month)
                 .date(p.date)
+                .summaryType("Daily")
                 .build();
     }
 
