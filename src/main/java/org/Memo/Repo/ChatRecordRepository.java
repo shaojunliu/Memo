@@ -60,4 +60,11 @@ public interface ChatRecordRepository extends JpaRepository<ChatRecord, Long> {
         """, nativeQuery = true)
     List<String> findDistinctOpenIdsByDay(@Param("start") Instant start, @Param("end")   Instant end);
 
+
+    @Query("""
+                SELECT COUNT(c) FROM ChatRecord c
+        WHERE c.openId = :openId
+    """)
+    long countByOpenId(@Param("openId") String openId);
+
 }
