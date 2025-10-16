@@ -1,6 +1,8 @@
 package org.Memo.Service;
 import lombok.RequiredArgsConstructor;
 import org.Memo.DTO.DaillySummarysModel;
+import org.Memo.DTO.GetSummaryDetailReq;
+import org.Memo.DTO.GetSummaryDetailRes;
 import org.Memo.DTO.SummaryModel;
 import org.Memo.Entity.DailyArticleSummaryEntity;
 import org.Memo.Repo.DailyArticleSummaryRepository;
@@ -51,11 +53,16 @@ public class DailySummaryService {
         DateParts p = resolveDateParts(e);
 
         return SummaryModel.builder()
+                .articleId(e.getId() == null?"":e.getId().toString())
                 .article(e.getArticle() == null ? "" : e.getArticle())
+                .articleTitle(e.getArticleTitle() == null ? "" : e.getArticleTitle())
                 .moodKeywords(e.getMoodKeywords() == null ? "" : e.getMoodKeywords())
+                .actionKeywords(e.getActionKeywords() == null ? "" : e.getActionKeywords())
+                .creatTime(e.getSummaryDate().atStartOfDay(ZoneId.of("Asia/Shanghai")).toInstant().toEpochMilli())
                 .year(p.year)
                 .month(p.month)
                 .date(p.date)
+                .summaryType("Daily")
                 .build();
     }
 

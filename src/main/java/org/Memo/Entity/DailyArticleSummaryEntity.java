@@ -31,6 +31,12 @@ public class DailyArticleSummaryEntity {
     @Column(name = "mood_keywords")
     private String moodKeywords;
 
+    @Column(name = "article_title")
+    private String articleTitle;
+
+    @Column(name = "action_keywords")
+    private String actionKeywords;
+
     @Column(name = "model")
     private String model;
 
