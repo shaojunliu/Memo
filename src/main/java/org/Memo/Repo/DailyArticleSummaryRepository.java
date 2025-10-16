@@ -108,4 +108,11 @@ public interface DailyArticleSummaryRepository extends JpaRepository<DailyArticl
             @Param("openId") String openId,
             @Param("day") LocalDate day
     );
+
+    @Query("""
+        SELECT COUNT(e) FROM DailyArticleSummaryEntity e
+        WHERE e.openId = :openId
+    """)
+    long countByOpenId(@Param("openId") String openId);
+
 }
