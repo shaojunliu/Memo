@@ -1,15 +1,12 @@
 package org.Memo.Repo;
 
-
 import org.Memo.Entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.Instant;
 import java.util.Optional;
-
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
@@ -17,7 +14,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
         SELECT u FROM User u
         WHERE u.openId = :openId
     """)
-    Optional<User> findByOpenId(String openId);
+    Optional<User> findByOpenId(@Param("openId") String openId);
 
     @Query("""
         SELECT u.createdAt FROM User u
