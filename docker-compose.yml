@@ -23,7 +23,7 @@ services:
     env_file:
       - /apps/stack/.env
     expose:
-      - "8080"                   # 仅容器网络内可访问
+      - "8080:8080"                   # 仅容器网络内可访问
     networks:
       - appnet
     restart: unless-stopped
@@ -45,6 +45,8 @@ services:
       DB_DDL_AUTO: validate
       DB_USER: HPLB
       DB_PASS: 20250817
+        - SERVER_PORT=8080
+        - SERVER_ADDRESS=0.0.0.0
       APP_AGENT_BASE_URL: ws://agent:8001/ws/chat   # 内网调用
 
   agent:
