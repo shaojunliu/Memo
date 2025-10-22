@@ -23,7 +23,9 @@ services:
     env_file:
       - /apps/stack/.env
     expose:
-      - "8080:8080"                   # 仅容器网络内可访问
+      - "8080"                   # 仅容器网络内可访问
+    ports:
+      - "8080:8080"
     networks:
       - appnet
     restart: unless-stopped
@@ -39,14 +41,14 @@ services:
         max-size: "10m"
         max-file: "3"
     environment:
+      SERVER_PORT: "8080"
+      SERVER_ADDRESS: "0.0.0.0"
       DB_URL: jdbc:postgresql://postgres:5432/memo?currentSchema=public
       DB_DRIVER: org.postgresql.Driver
       DB_DIALECT: org.hibernate.dialect.PostgreSQLDialect
       DB_DDL_AUTO: validate
       DB_USER: HPLB
       DB_PASS: 20250817
-        - SERVER_PORT=8080
-        - SERVER_ADDRESS=0.0.0.0
       APP_AGENT_BASE_URL: ws://agent:8001/ws/chat   # 内网调用
 
   agent:
@@ -74,7 +76,7 @@ services:
       options: { max-size: "10m", max-file: "3" }
 
   nginx:
-    image: nginx:alpine
+    image: nginx:stable
     container_name: memo-nginx
     depends_on:
       - memoservice
