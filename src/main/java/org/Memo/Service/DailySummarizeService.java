@@ -60,7 +60,7 @@ public class DailySummarizeService {
                 }
                 summaryRepo.upsertSummary(
                         openId, targetDate,
-                        res.getArticle(), res.getMoodKeywords(),
+                        res.getArticle(), res.getMoodKeywords(),res.getActionKeywords(),res.getArticleTitle(),
                         res.getModel(), Optional.ofNullable(res.getTokenUsageJson()).orElse("{}")
                 );
             } catch (Exception e) {

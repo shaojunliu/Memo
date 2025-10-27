@@ -21,15 +21,17 @@ public interface DailyArticleSummaryRepository extends JpaRepository<DailyArticl
     @Transactional
     @Query(value = """
     INSERT INTO daily_article_summary(
-        open_id, summary_date, article, mood_keywords, model, token_usage, created_at, updated_at
+        open_id, summary_date, article, mood_keywords,action_keywords,article_title, model, token_usage, created_at, updated_at
     )
-    VALUES(:openId, :summaryDate, :article, :moodKeywords, :model,
+    VALUES(:openId, :summaryDate, :article, :moodKeywords, :actionKeywords, :articleTitle, :model,
            CAST(COALESCE(NULLIF(:tokenUsageJson, ''), '{}') AS jsonb),
            NOW(), NOW())
     ON CONFLICT (open_id, summary_date)
     DO UPDATE SET
         article       = EXCLUDED.article,
         mood_keywords = EXCLUDED.mood_keywords,
+        action_keywords = EXCLUDED.action_keywords,
+        article_title = EXCLUDED.article_title,
         model         = EXCLUDED.model,
         token_usage   = EXCLUDED.token_usage,
         updated_at    = NOW()
@@ -38,6 +40,8 @@ public interface DailyArticleSummaryRepository extends JpaRepository<DailyArticl
                        @Param("summaryDate") LocalDate summaryDate,
                        @Param("article") String article,
                        @Param("moodKeywords") String moodKeywords,
+                       @Param("actionKeywords") String actionKeywords,
+                       @Param("articleTitle") String articleTitle,
                        @Param("model") String model,
                        @Param("tokenUsageJson") String tokenUsageJson);
 

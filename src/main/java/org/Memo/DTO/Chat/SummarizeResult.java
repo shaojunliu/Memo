@@ -25,6 +25,10 @@ public class SummarizeResult {
     /** 今日情绪关键词（英文逗号分隔，如 "专注, 放松, 感恩"） */
     private String moodKeywords;
 
+    private String actionKeywords;
+
+    private String articleTitle;
+
     /** 使用的模型名（可选） */
     private String model;
 
