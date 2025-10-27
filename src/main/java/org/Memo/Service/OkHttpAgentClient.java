@@ -73,7 +73,7 @@ public class OkHttpAgentClient implements AgentClient {
      */
     @Override
     public SummarizeResult summarizeDay(String openId, String packedText) {
-        SummarizeResult defaultResult = new SummarizeResult("Agent 返回空响应", "sad,sad,sad", "qwen", "{}");
+        SummarizeResult defaultResult = new SummarizeResult("Agent 返回空响应", "sad,sad,sad","none,none,none","title", "qwen", "{}");
 
         try {
             RestTemplate restTemplate = new RestTemplate();
@@ -106,9 +106,11 @@ public class OkHttpAgentClient implements AgentClient {
                     Map<String, Object> m = MAPPER.readValue(resp, new TypeReference<Map<String, Object>>() {});
                     String article = Optional.ofNullable(m.get("article")).map(Object::toString).orElse(defaultResult.getArticle());
                     String mood = Optional.ofNullable(m.get("moodKeywords")).map(Object::toString).orElse(defaultResult.getMoodKeywords());
+                    String action = Optional.ofNullable(m.get("actionKeywords")).map(Object::toString).orElse(defaultResult.getMoodKeywords());
+                    String title = Optional.ofNullable(m.get("articleTitle")).map(Object::toString).orElse(defaultResult.getMoodKeywords());
                     String model = Optional.ofNullable(m.get("model")).map(Object::toString).orElse("default");
                     String tokenUsageJson = Optional.ofNullable(m.get("tokenUsageJson")).map(Object::toString).orElse("");
-                    return new SummarizeResult(article, mood, model, tokenUsageJson);
+                    return new SummarizeResult(article, mood,action,title, model, tokenUsageJson);
                 }
             }
             return defaultResult;
