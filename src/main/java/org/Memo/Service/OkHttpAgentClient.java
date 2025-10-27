@@ -106,8 +106,8 @@ public class OkHttpAgentClient implements AgentClient {
                     Map<String, Object> m = MAPPER.readValue(resp, new TypeReference<Map<String, Object>>() {});
                     String article = Optional.ofNullable(m.get("article")).map(Object::toString).orElse(defaultResult.getArticle());
                     String mood = Optional.ofNullable(m.get("moodKeywords")).map(Object::toString).orElse(defaultResult.getMoodKeywords());
-                    String action = Optional.ofNullable(m.get("actionKeywords")).map(Object::toString).orElse(defaultResult.getMoodKeywords());
-                    String title = Optional.ofNullable(m.get("articleTitle")).map(Object::toString).orElse(defaultResult.getMoodKeywords());
+                    String action = Optional.ofNullable(m.get("actionKeywords")).map(Object::toString).orElse(defaultResult.getActionKeywords());
+                    String title = Optional.ofNullable(m.get("articleTitle")).map(Object::toString).orElse(defaultResult.getArticleTitle());
                     String model = Optional.ofNullable(m.get("model")).map(Object::toString).orElse("default");
                     String tokenUsageJson = Optional.ofNullable(m.get("tokenUsageJson")).map(Object::toString).orElse("");
                     return new SummarizeResult(article, mood,action,title, model, tokenUsageJson);
