@@ -1,5 +1,4 @@
 package org.Memo.Controller;
-
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.Memo.DTO.Login.LoginRequest;
@@ -27,57 +26,19 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-@Slf4j
 @RestController
-@RequestMapping("/api/auth")
-public class WxAuthController {
+@RequestMapping("/wx")
+@RequiredArgsConstructor
+@Slf4j
+public class WxController {
 
 
-    private final WxAuthService wxAuthService;
-
-    String wechatToken = "memo123";
     private final ChatRecordService recordService;
     private final OkHttpAgentClient agentClient;
 
-    public WxAuthController(WxAuthService wxAuthService, ChatRecordService recordService, OkHttpAgentClient agentClient) {
-        this.wxAuthService = wxAuthService;
-        this.recordService = recordService;
-        this.agentClient = agentClient;
-    }
+    // 和「微信公众平台 → 基本配置 → 服务器配置」里填的一致
+    String wechatToken = "memo123";
 
-    /**
-     * 登录或注册接口
-     * 请求体：
-     * {
-     *   "code": "...",
-     *   "nickname": "...",
-     *   "avatarUrl": "..."
-     * }
-     */
-    @PostMapping("/wx/login")
-    public ApiResponse<LoginResponse> wxLogin(@RequestBody LoginRequest req,
-                                              HttpServletRequest httpReq) {
-        log.info("LoginRequest: {}", req);
-        try {
-            String ip = httpReq.getRemoteAddr();
-            LoginResponse loginResponse = wxAuthService.loginOrRegister(req, ip);
-            log.info("loginResponse: {}", loginResponse);
-            return ApiResponse.ok(loginResponse);
-        } catch (Exception e) {
-            log.error("wxLogin error", e);
-            return ApiResponse.fail(500, "登录失败: " + e.getMessage());
-        }
-    }
-
-    /**
-     * 示例：受保护接口（测试 JWT 解析）
-     */
-    @GetMapping("/me")
-    public ApiResponse<String> me(@RequestAttribute(name = "uid", required = false) Long uid) {
-        String msg = uid == null ? "anonymous" : ("uid=" + uid);
-        return ApiResponse.ok(msg);
-    }
 
     /** 微信URL校验：必须原样返回 echostr（纯文本） */
     @GetMapping(produces = MediaType.TEXT_PLAIN_VALUE)
@@ -101,8 +62,9 @@ public class WxAuthController {
     }
 
 
+
     /** 微信消息推送入口（明文模式） */
-    @PostMapping(value = "/wx", produces = "application/xml;charset=UTF-8")
+    @PostMapping(produces = "application/xml;charset=UTF-8")
     public String receive(@RequestBody String xml) {
         log.info("[WX POST] {}", xml);
 
@@ -145,7 +107,6 @@ public class WxAuthController {
             return textReply(fromUser, toUser, "（系统繁忙，请稍后再试）");
         }
     }
-
     // ========= 工具方法 =========
 
     private boolean checkSignature(String token, String timestamp, String nonce, String signature) {
@@ -163,6 +124,7 @@ public class WxAuthController {
             return false;
         }
     }
+
 
     private static final Pattern CDATA =
             Pattern.compile("<%s><!\\[CDATA\\[(.*?)]\\]></%s>", Pattern.DOTALL);
@@ -185,6 +147,4 @@ public class WxAuthController {
                </xml>
                """.formatted(toUserOpenId, fromGhid, now, text);
     }
-
-
 }

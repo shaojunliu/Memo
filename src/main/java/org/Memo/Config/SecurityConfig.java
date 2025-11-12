@@ -22,7 +22,7 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.csrf(csrf -> csrf.disable())
+        http.csrf(csrf -> csrf.ignoringRequestMatchers("/wx").disable())
                 .headers(h -> h.frameOptions(f -> f.disable()));
 
         if (securityDisabled) {
@@ -31,6 +31,10 @@ public class SecurityConfig {
         } else {
             // 回滚到原先策略（示例）
             http.authorizeHttpRequests(auth -> auth
+                            // 微信服务器入口（必须放行）
+                            .requestMatchers("/wx").permitAll()
+                            // 如果你还有 /wx/** 其他子路由，也一并放行
+                            .requestMatchers("/wx/**").permitAll()
                             .requestMatchers("/api/auth/wx/login", "/h2-console/**", "/health").permitAll()
                             .anyRequest().authenticated()
                     )
