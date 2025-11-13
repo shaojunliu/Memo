@@ -1,21 +1,10 @@
 package org.Memo.Controller;
-import jakarta.servlet.http.HttpServletRequest;
+
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.extern.slf4j.Slf4j;
-import org.Memo.DTO.Login.LoginRequest;
-import org.Memo.DTO.Login.LoginResponse;
-import org.Memo.Service.ChatRecordService;
-import org.Memo.Service.OkHttpAgentClient;
-import org.Memo.Service.WxAuthService;
-import org.Memo.DTO.ApiResponse;
-import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.Memo.Service.ChatRecordService;
 import org.Memo.Service.OkHttpAgentClient;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,27 +17,26 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 @RestController
 @RequestMapping("/wx")
 @RequiredArgsConstructor
 @Slf4j
 public class WxController {
 
-
     private final ChatRecordService recordService;
     private final OkHttpAgentClient agentClient;
 
-    // 和「微信公众平台 → 基本配置 → 服务器配置」里填的一致
-    String wechatToken = "memo123";
-
+    // 和公众号后台填写一致
+    private static final String WECHAT_TOKEN = "memo123";
 
     /** 微信URL校验：必须原样返回 echostr（纯文本） */
     @GetMapping
     public void verify(
-            @RequestParam(required = false) String signature,
-            @RequestParam(required = false) String timestamp,
-            @RequestParam(required = false) String nonce,
-            @RequestParam(required = false) String echostr,
+            @RequestParam(value = "signature", required = false) String signature,
+            @RequestParam(value = "timestamp", required = false) String timestamp,
+            @RequestParam(value = "nonce",     required = false) String nonce,
+            @RequestParam(value = "echostr",   required = false) String echostr,
             HttpServletResponse resp) throws IOException {
 
         try {
@@ -56,6 +44,7 @@ public class WxController {
                     !StringUtils.hasText(timestamp) ||
                     !StringUtils.hasText(nonce) ||
                     !StringUtils.hasText(echostr)) {
+
                 log.warn("[WX VERIFY] missing params sig={} ts={} nonce={} echostr={}",
                         signature, timestamp, nonce, echostr);
                 resp.setStatus(400);
@@ -64,14 +53,13 @@ public class WxController {
                 return;
             }
 
-            boolean pass = checkSignature(wechatToken, timestamp, nonce, signature);
+            boolean pass = checkSignature(WECHAT_TOKEN, timestamp, nonce, signature);
             log.info("[WX VERIFY] ts={} nonce={} pass={}", timestamp, nonce, pass);
 
             resp.setContentType("text/plain;charset=UTF-8");
             if (pass) {
-                // 必须原样返回 echostr（纯文本、无多余字符）
                 resp.setStatus(200);
-                resp.getWriter().write(echostr);
+                resp.getWriter().write(echostr);   // 原样返回
             } else {
                 resp.setStatus(403);
                 resp.getWriter().write("invalid signature");
@@ -94,12 +82,11 @@ public class WxController {
         String msgType  = cdata(xml, "MsgType");
         String content  = cdata(xml, "Content");
 
-        // 只处理文本消息，其他类型先回个提示
+        // 只处理文本消息
         if (!"text".equalsIgnoreCase(msgType)) {
             return textReply(fromUser, toUser, "暂不支持该类型消息～");
         }
 
-        // 复用你现有的 recordService/agentClient 逻辑（保持与 /api/chat 行为一致）
         String traceId = UUID.randomUUID().toString();
         try {
             String reply = CompletableFuture.supplyAsync(() -> {
@@ -128,6 +115,7 @@ public class WxController {
             return textReply(fromUser, toUser, "（系统繁忙，请稍后再试）");
         }
     }
+
     // ========= 工具方法 =========
 
     private boolean checkSignature(String token, String timestamp, String nonce, String signature) throws Exception {
@@ -141,7 +129,6 @@ public class WxController {
         return sb.toString().equalsIgnoreCase(signature);
     }
 
-
     private static final Pattern CDATA =
             Pattern.compile("<%s><!\\[CDATA\\[(.*?)]\\]></%s>", Pattern.DOTALL);
 
@@ -150,9 +137,9 @@ public class WxController {
         Matcher m = p.matcher(xml);
         return m.find() ? m.group(1).trim() : "";
     }
+
     private String textReply(String toUserOpenId, String fromGhid, String text) {
         long now = System.currentTimeMillis() / 1000;
-        // 注意：微信回包里 To/From 是**对调**的
         return """
                <xml>
                  <ToUserName><![CDATA[%s]]></ToUserName>
