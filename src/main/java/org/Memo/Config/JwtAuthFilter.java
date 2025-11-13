@@ -35,15 +35,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String method = request.getMethod();
         if ("OPTIONS".equalsIgnoreCase(method)) return true;
         if ("/wx".equals(uri) || uri.startsWith("/wx/")) return true;
-        if ("/health".equals(uri)) return true;
-        if (uri.startsWith("/h2-console")) return true;
+        if ("/health".equals(uri) || uri.startsWith("/h2-console")) return true;
         return false;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse resp, FilterChain chain)
             throws ServletException, IOException {
-
         String auth = req.getHeader("Authorization");
 
         // 没有 Authorization 头：直接放行，让后续鉴权规则决定
