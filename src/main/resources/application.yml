@@ -45,6 +45,9 @@ wx:
   appid: wx24a59aa9e1797a8d
   secret: 06ab9e3e03d2448385e6bcac5d09746d
   mock: false
+  oa:
+    appid: wx3137f0ea556c3824
+    secret: ca86079c4be9f7faaa59206fe0dc77b7
 app:
   tz: "Asia/Shanghai"
   summarize:

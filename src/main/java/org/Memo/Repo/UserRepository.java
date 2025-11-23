@@ -21,4 +21,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
         WHERE u.openId = :openId
     """)
     Optional<Instant> findCreatedAtByOpenId(@Param("openId") String openId);
+
+
+    @Query("""
+        SELECT u FROM User u
+        WHERE u.oaOpenId = :oaOpenid
+    """)
+    Optional<User> findByOaOpenid(@Param("oaOpenid") String oaOpenid);
+
+    Optional<User> findByUnionId(String unionId);
+
 }
