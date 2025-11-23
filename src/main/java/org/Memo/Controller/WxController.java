@@ -1,18 +1,26 @@
 package org.Memo.Controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.Memo.Entity.User;
+import org.Memo.Repo.UserRepository;
 import org.Memo.Service.ChatRecordService;
 import org.Memo.Service.OkHttpAgentClient;
+import org.Memo.Service.WxAuthService;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
@@ -26,6 +34,20 @@ public class WxController {
 
     private final ChatRecordService recordService;
     private final OkHttpAgentClient agentClient;
+    private final UserRepository userRepository;
+
+    private final RestTemplate restTemplate = new RestTemplate();
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    // 使用服务号的 appid / secret（不要用小程序的）
+    @Value("${wx.oa.appid}")
+    private String oaAppId;
+
+    @Value("${wx.oa.secret}")
+    private String oaSecret;
+
+    private String officialAccessToken = null;
+    private long tokenExpireTs = 0;
 
     // 和公众号后台填写一致
     private static final String WECHAT_TOKEN = "memo123";
@@ -81,6 +103,8 @@ public class WxController {
         String fromUser = cdata(xml, "FromUserName"); // openid
         String msgType  = cdata(xml, "MsgType");
         String content  = cdata(xml, "Content");
+        // 根据服务号 openid 拿 unionid（内部统一用 unionid）
+        String unionid = resolveUnionIdFromOaOpenId(fromUser);
 
         // 只处理文本消息
         if (!"text".equalsIgnoreCase(msgType)) {
@@ -89,16 +113,17 @@ public class WxController {
 
         String traceId = UUID.randomUUID().toString();
         try {
+            String finalUnionid = unionid;
             String reply = CompletableFuture.supplyAsync(() -> {
                 Instant now = Instant.now();
-                var rec = recordService.createSession(fromUser, now);
+                var rec = recordService.createSession(finalUnionid, now);
                 var sessionId = rec.getSessionId();
 
                 recordService.append(sessionId, "user", content, now);
 
                 String r;
                 try {
-                    r = agentClient.chat(fromUser, content);
+                    r = agentClient.chat(finalUnionid, content);
                     if (r == null) r = "";
                 } catch (Exception e) {
                     log.error("[WX] agent error", e);
@@ -107,7 +132,7 @@ public class WxController {
 
                 recordService.append(sessionId, "assistant", r, Instant.now());
                 return r;
-            }, recordService.executorFor(fromUser)).join();
+            }, recordService.executorFor(finalUnionid)).join();
 
             return textReply(fromUser, toUser, reply);
         } catch (Exception e) {
@@ -149,5 +174,104 @@ public class WxController {
                  <Content><![CDATA[%s]]></Content>
                </xml>
                """.formatted(toUserOpenId, fromGhid, now, text);
+    }
+
+
+    /** 获取公众号 access_token（带简单内存缓存） */
+    private String getOfficialAccessToken() {
+        long now = System.currentTimeMillis();
+        if (officialAccessToken != null && now < tokenExpireTs) {
+            return officialAccessToken;
+        }
+
+        String url = "https://api.weixin.qq.com/cgi-bin/token"
+                + "?grant_type=client_credential"
+                + "&appid=" + oaAppId
+                + "&secret=" + oaSecret;
+
+        log.info("Request OA access_token: {}", url);
+        String resp = restTemplate.getForObject(url, String.class);
+
+        try {
+            var json = objectMapper.readTree(resp);
+            if (json.has("errcode")) {
+                throw new RuntimeException("getOfficialAccessToken error: " + resp);
+            }
+            officialAccessToken = json.get("access_token").asText();
+            int expiresIn = json.get("expires_in").asInt();   // 通常 7200
+            tokenExpireTs = now + (expiresIn - 300) * 1000L;  // 提前5分钟过期
+            return officialAccessToken;
+        } catch (Exception e) {
+            throw new RuntimeException("parse access_token failed: " + resp, e);
+        }
+    }
+
+    /** 根据服务号 openid 调公众号接口拿 unionid */
+    private String getUnionIdByOaOpenid(String oaOpenid) {
+        String accessToken = getOfficialAccessToken();
+
+        String url = "https://api.weixin.qq.com/cgi-bin/user/info"
+                + "?access_token=" + accessToken
+                + "&openid=" + oaOpenid
+                + "&lang=zh_CN";
+
+        log.info("OA user info url = {}", url);
+        String respStr = restTemplate.getForObject(url, String.class);
+        log.info("OA user info resp = {}", respStr);
+
+        try {
+            var json = objectMapper.readTree(respStr);
+            if (json.has("errcode")) {
+                log.error("getUnionIdByOaOpenid error: {}", respStr);
+                return null;
+            }
+            if (json.has("unionid")) {
+                return json.get("unionid").asText();
+            } else {
+                log.warn("no unionid in OA user info, openid={}", oaOpenid);
+                return null;
+            }
+        } catch (Exception e) {
+            log.error("parse OA user info failed", e);
+            return null;
+        }
+    }
+
+    /** 对外统一方法：根据服务号 openid 找到 unionid（优先用已有的 union_id 字段） */
+    private String resolveUnionIdFromOaOpenId(String oaOpenid) {
+        // Step1: 按 oa_openid 查
+        User user = userRepository.findByOaOpenid(oaOpenid).orElse(null);
+        if (user != null && StringUtils.hasText(user.getUnionId())) {
+            return user.getUnionId();  // 已有 unionid，直接返回
+        }
+
+        // Step2: 去微信拿 unionid
+        String unionId = getUnionIdByOaOpenid(oaOpenid);
+        if (!StringUtils.hasText(unionId)) {
+            // 极端情况：拿不到 unionid，就先用 oa_openid 顶一下（避免整个流程挂）
+            log.warn("resolveUnionIdFromOaOpenid: unionid is null, fallback to oa_openid={}", oaOpenid);
+            return oaOpenid;
+        }
+
+        // Step3: 看 unionid 在库里是否已有对应用户（小程序那边登录过）
+        User unionUser = userRepository.findByUnionId(unionId).orElse(null);
+        if (unionUser != null) {
+            // 小程序用户已存在，只需要补上 oa_openid 即可
+            if (!oaOpenid.equals(unionUser.getOaOpenId())) {
+                unionUser.setOaOpenId(oaOpenid);
+                userRepository.save(unionUser);
+            }
+            return unionId;
+        }
+
+        // Step4: 既没有 oa_openid 记录，也没有 unionid 记录，新建一个用户
+        if (user == null) {
+            user = new User();
+            user.setOaOpenId(oaOpenid);
+        }
+        user.setUnionId(unionId);
+        userRepository.save(user);
+
+        return unionId;
     }
 }

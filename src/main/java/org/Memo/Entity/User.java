@@ -14,8 +14,8 @@ public class User {               // ★ public 顶级类，非 final，非内�
     private Long id;
 
     @Column(name="open_id", unique = true, nullable = false)
-    private String openId;
-
+    private String openId;// 小程序 openid
+    private String oaOpenId;// 服务号 openid
     private String unionId;
     private String nickname;
     private String avatarUrl;

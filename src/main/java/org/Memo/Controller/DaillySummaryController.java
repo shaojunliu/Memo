@@ -4,8 +4,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.Memo.DTO.ApiResponse;
 import org.Memo.DTO.DaillySummarysModel;
+import org.Memo.Entity.User;
+import org.Memo.Repo.UserRepository;
 import org.Memo.Service.DailySummaryService;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Optional;
 
 @Slf4j
 @RestController
@@ -13,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class DaillySummaryController {
     private final DailySummaryService service;
-
+    private final UserRepository userRepository;
 
     /**
      * 示例：
@@ -30,7 +34,8 @@ public class DaillySummaryController {
             return ApiResponse.fail(400, "openid 不能为空");
         }
         try {
-            DaillySummarysModel body = service.getDailySummary(openid, searchStartDay, searchEndDay);
+            User user = userRepository.findByOpenId(openid).orElse(new User());
+            DaillySummarysModel body = service.getDailySummary(user.getUnionId(), searchStartDay, searchEndDay);
             return ApiResponse.ok(body);
         } catch (Exception e) {
             log.error(e.getMessage(), e);
