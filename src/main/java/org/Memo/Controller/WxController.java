@@ -160,7 +160,7 @@ public class WxController {
         } catch (Exception e) {
             log.error("[WX] submit async task error, traceId={}", traceId, e);
         }
-        return textReply(fromUser, toUser, " ");
+        return "success";
     }
 
     // ========= 工具方法 =========
@@ -316,6 +316,9 @@ public class WxController {
 
             String respStr = restTemplate.postForObject(url, payload, String.class);
             log.info("[WX KF] sendText resp={}", respStr);
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            // ⭐ 关键：把微信返回的 body 打出来，这里面会有 errcode / errmsg
+            log.error("[WX KF] HttpClientError status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString(), e);
         } catch (Exception e) {
             log.error("[WX KF] sendText error, openid={}", openid, e);
         }
