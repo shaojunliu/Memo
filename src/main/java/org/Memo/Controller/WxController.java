@@ -141,9 +141,18 @@ public class WxController {
                     // 2. 调用 Agent 获取回复
                     String reply;
                     try {
-                        reply = agentClient.chat(unionId, content);
-                        if (reply == null) {
-                            reply = "（暂无回复）";
+                        String raw = agentClient.chat(unionId, content);
+                        // 尝试解析 JSON {"reply":"xxx"}
+                        try {
+                            var node = objectMapper.readTree(raw);
+                            if (node.has("reply")) {
+                                reply = node.get("reply").asText();
+                            } else {
+                                reply = raw;
+                            }
+                        } catch (Exception jsonEx) {
+                            // 不是 JSON 就直接用原始内容
+                            reply = raw;
                         }
                     } catch (Exception e) {
                         log.error("[WX] agent error, traceId={}", traceId, e);
