@@ -15,7 +15,12 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
@@ -295,7 +300,7 @@ public class WxController {
      */
     private void sendKfText(String openid, String content) {
         String accessToken = getOfficialAccessToken();
-        String url = "https://api.weixin.qq.com/cgi-bin/message/custom/send?access_token=" + accessToken;
+        String urlStr = "https://api.weixin.qq.com/cgi-bin/message/custom/send?access_token=" + accessToken;
 
         try {
             // 1. 构造 JSON body，与 curl 保持一致
@@ -307,21 +312,39 @@ public class WxController {
             payload.put("text", text);
 
             // 2. 构造 headers，尽量贴近 curl
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setAccept(Collections.singletonList(MediaType.ALL));
-            headers.set("User-Agent", "curl/8.5.0"); // 模拟 curl，看是否还有 412
+            String jsonPayload = objectMapper.writeValueAsString(payload);
+            URL url = new URL(urlStr);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("Accept", "*/*");
+            conn.setRequestProperty("User-Agent", "curl/8.5.0");
 
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
+            byte[] out = jsonPayload.getBytes(StandardCharsets.UTF_8);
+            conn.setFixedLengthStreamingMode(out.length);
+            conn.connect();
 
-            // 3. 不用 postForObject，直接拿 ResponseEntity 看原始 status + body
-            ResponseEntity<String> resp = restTemplate.exchange(
-                    url,
-                    HttpMethod.POST,
-                    entity,
-                    String.class
-            );
-            log.info("[WX KF] status={}, body={}", resp.getStatusCode(), resp.getBody());
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(out);
+            }
+
+            int status = conn.getResponseCode();
+            InputStream is = (status >= 400) ? conn.getErrorStream() : conn.getInputStream();
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            if (is != null) {
+                byte[] buffer = new byte[1024];
+                int len;
+                while ((len = is.read(buffer)) != -1) {
+                    baos.write(buffer, 0, len);
+                }
+                is.close();
+            }
+            String body = baos.toString(StandardCharsets.UTF_8);
+
+            log.info("[WX KF][HTTP] status={}, body={}", status, body);
+
         } catch (Exception e) {
             log.error("[WX KF] sendKfText exception, openid={}", openid, e);
         }
