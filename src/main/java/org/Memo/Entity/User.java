@@ -15,6 +15,7 @@ public class User {               // ★ public 顶级类，非 final，非内�
 
     @Column(name="open_id", unique = true, nullable = false)
     private String openId;// 小程序 openid
+    @Column(name = "oa_openid")   //显式声明对应数据库的列名
     private String oaOpenId;// 服务号 openid
     private String unionId;
     private String nickname;
