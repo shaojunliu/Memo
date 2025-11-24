@@ -108,6 +108,7 @@ public class WxController {
         log.info("[WX POST] {}", xml);
 
         String fromUser = cdata(xml, "FromUserName"); // 用户 openid（服务号 openid）
+        String toUser   = cdata(xml, "ToUserName");   // 公众号 ghid
         String msgType  = cdata(xml, "MsgType");
         String content  = cdata(xml, "Content");
         // 通过服务号 openid -> unionid，内部统一用 unionid 作为用户标识
@@ -159,7 +160,7 @@ public class WxController {
         } catch (Exception e) {
             log.error("[WX] submit async task error, traceId={}", traceId, e);
         }
-        return "success";
+        return textReply(fromUser, toUser, " ");
     }
 
     // ========= 工具方法 =========
