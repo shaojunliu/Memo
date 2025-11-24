@@ -10,7 +10,7 @@ import org.Memo.Service.ChatRecordService;
 import org.Memo.Service.OkHttpAgentClient;
 import org.Memo.Service.WxAuthService;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
@@ -44,9 +44,6 @@ public class WxController {
 
     @Value("${wx.oa.secret}")
     private String oaSecret;
-
-    private String officialAccessToken = null;
-    private long tokenExpireTs = 0;
 
     // 和公众号后台填写一致
     private static final String WECHAT_TOKEN = "memo123";
@@ -202,9 +199,6 @@ public class WxController {
     /** 获取公众号 access_token（带简单内存缓存） */
     private String getOfficialAccessToken() {
         long now = System.currentTimeMillis();
-        if (officialAccessToken != null && now < tokenExpireTs) {
-            return officialAccessToken;
-        }
 
         String url = "https://api.weixin.qq.com/cgi-bin/token"
                 + "?grant_type=client_credential"
@@ -219,10 +213,7 @@ public class WxController {
             if (json.has("errcode")) {
                 throw new RuntimeException("getOfficialAccessToken error: " + resp);
             }
-            officialAccessToken = json.get("access_token").asText();
-            int expiresIn = json.get("expires_in").asInt();   // 通常 7200
-            tokenExpireTs = now + (expiresIn - 300) * 1000L;  // 提前5分钟过期
-            return officialAccessToken;
+            return json.get("access_token").asText();
         } catch (Exception e) {
             throw new RuntimeException("parse access_token failed: " + resp, e);
         }
@@ -303,10 +294,11 @@ public class WxController {
      * 通过「客服消息接口」发送文本消息给用户
      */
     private void sendKfText(String openid, String content) {
-        try {
-            String accessToken = getOfficialAccessToken();
-            String url = "https://api.weixin.qq.com/cgi-bin/message/custom/send?access_token=" + accessToken;
+        String accessToken = getOfficialAccessToken();
+        String url = "https://api.weixin.qq.com/cgi-bin/message/custom/send?access_token=" + accessToken;
 
+        try {
+            // 1. 构造 JSON body，与 curl 保持一致
             Map<String, Object> payload = new HashMap<>();
             payload.put("touser", openid);
             payload.put("msgtype", "text");
@@ -314,13 +306,24 @@ public class WxController {
             text.put("content", content);
             payload.put("text", text);
 
-            String respStr = restTemplate.postForObject(url, payload, String.class);
-            log.info("[WX KF] sendText resp={}", respStr);
-        } catch (org.springframework.web.client.HttpClientErrorException e) {
-            // ⭐ 关键：把微信返回的 body 打出来，这里面会有 errcode / errmsg
-            log.error("[WX KF] HttpClientError status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString(), e);
+            // 2. 构造 headers，尽量贴近 curl
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setAccept(Collections.singletonList(MediaType.ALL));
+            headers.set("User-Agent", "curl/8.5.0"); // 模拟 curl，看是否还有 412
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
+
+            // 3. 不用 postForObject，直接拿 ResponseEntity 看原始 status + body
+            ResponseEntity<String> resp = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    entity,
+                    String.class
+            );
+            log.info("[WX KF] status={}, body={}", resp.getStatusCode(), resp.getBody());
         } catch (Exception e) {
-            log.error("[WX KF] sendText error, openid={}", openid, e);
+            log.error("[WX KF] sendKfText exception, openid={}", openid, e);
         }
     }
 }
