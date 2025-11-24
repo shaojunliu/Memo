@@ -19,10 +19,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -95,53 +94,72 @@ public class WxController {
     }
 
     /** 微信消息推送入口（明文模式） */
+    // ======================= 2. 消息接收（POST /wx） =======================
+
+    /**
+     * 微信消息推送入口（明文模式）
+     *
+     * 这里不做同步长耗时回复：
+     *  - 5 秒内快速返回 "success"
+     *  - 后台异步调 Agent，处理完成后通过「客服消息接口」推给用户
+     */
     @PostMapping(produces = "application/xml;charset=UTF-8")
     public String receive(@RequestBody String xml) {
-        log.info("[WX chat request] {}", xml);
-        long start = System.currentTimeMillis();
+        log.info("[WX POST] {}", xml);
 
-        String toUser   = cdata(xml, "ToUserName");
-        String fromUser = cdata(xml, "FromUserName"); // openid
+        String fromUser = cdata(xml, "FromUserName"); // 用户 openid（服务号 openid）
         String msgType  = cdata(xml, "MsgType");
         String content  = cdata(xml, "Content");
-        // 根据服务号 openid 拿 unionid（内部统一用 unionid）
-        String unionid = resolveUnionIdFromOaOpenId(fromUser);
+        // 通过服务号 openid -> unionid，内部统一用 unionid 作为用户标识
+        String unionId = resolveUnionIdFromOaOpenId(fromUser);
 
-        // 只处理文本消息
+        // 这里只处理文本消息，其它类型直接忽略
         if (!"text".equalsIgnoreCase(msgType)) {
-            return textReply(fromUser, toUser, "暂不支持该类型消息～");
+            log.info("[WX POST] unsupported MsgType={}, ignore", msgType);
+            return "success";
         }
 
+        // 生成 traceId 便于排查
         String traceId = UUID.randomUUID().toString();
+        log.info("[WX POST] traceId={}, unionId={}, content={}", unionId, fromUser, content);
+
         try {
-            String finalUnionid = unionid;
-            String reply = CompletableFuture.supplyAsync(() -> {
-                Instant now = Instant.now();
-                var rec = recordService.createSession(finalUnionid, now);
-                var sessionId = rec.getSessionId();
-
-                recordService.append(sessionId, "user", content, now);
-
-                String r;
+            // 使用你已有的 per-user executor，保证同一用户消息顺序
+            Executor executor = recordService.executorFor(unionId);
+            executor.execute(() -> {
                 try {
-                    r = agentClient.chat(finalUnionid, content);
-                    if (r == null) r = "";
-                } catch (Exception e) {
-                    log.error("[WX] agent error", e);
-                    r = "（服务异常，请稍后再试）";
+                    Instant now = Instant.now();
+                    var rec = recordService.createSession(unionId, now);
+                    var sessionId = rec.getSessionId();
+
+                    // 1. 记录用户消息
+                    recordService.append(sessionId, "user", content, now);
+
+                    // 2. 调用 Agent 获取回复
+                    String reply;
+                    try {
+                        reply = agentClient.chat(unionId, content);
+                        if (reply == null) {
+                            reply = "（暂无回复）";
+                        }
+                    } catch (Exception e) {
+                        log.error("[WX] agent error, traceId={}", traceId, e);
+                        reply = "（服务异常，请稍后再试）";
+                    }
+
+                    // 3. 写入助手消息
+                    recordService.append(sessionId, "assistant", reply, Instant.now());
+
+                    // 4. 通过「客服消息接口」异步推送给用户
+                    sendKfText(fromUser, reply);
+                } catch (Exception ex) {
+                    log.error("[WX] async handle error, traceId={}", traceId, ex);
                 }
-
-                recordService.append(sessionId, "assistant", r, Instant.now());
-                return r;
-            }, recordService.executorFor(finalUnionid)).join();
-
-            long end = System.currentTimeMillis();
-            log.info("WX chat cost:{}", (end - start));
-            return textReply(fromUser, toUser, reply);
+            });
         } catch (Exception e) {
-            log.error("[WX] handle error, traceId={}", traceId, e);
-            return textReply(fromUser, toUser, "（系统繁忙，请稍后再试）");
+            log.error("[WX] submit async task error, traceId={}", traceId, e);
         }
+        return "success";
     }
 
     // ========= 工具方法 =========
@@ -276,5 +294,29 @@ public class WxController {
         userRepository.save(user);
 
         return unionId;
+    }
+
+    // ======================= 5. 客服消息推送 =======================
+
+    /**
+     * 通过「客服消息接口」发送文本消息给用户
+     */
+    private void sendKfText(String openid, String content) {
+        try {
+            String accessToken = getOfficialAccessToken();
+            String url = "https://api.weixin.qq.com/cgi-bin/message/custom/send?access_token=" + accessToken;
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("touser", openid);
+            payload.put("msgtype", "text");
+            Map<String, String> text = new HashMap<>();
+            text.put("content", content);
+            payload.put("text", text);
+
+            String respStr = restTemplate.postForObject(url, payload, String.class);
+            log.info("[WX KF] sendText resp={}", respStr);
+        } catch (Exception e) {
+            log.error("[WX KF] sendText error, openid={}", openid, e);
+        }
     }
 }
