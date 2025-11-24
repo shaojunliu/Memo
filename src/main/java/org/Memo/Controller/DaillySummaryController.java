@@ -35,7 +35,9 @@ public class DaillySummaryController {
         }
         try {
             User user = userRepository.findByOpenId(openid).orElse(new User());
+            log.info("getDailySummary unionid:{},openid:{}", user.getUnionId(),openid);
             DaillySummarysModel body = service.getDailySummary(user.getUnionId(), searchStartDay, searchEndDay);
+            log.info("getDailySummary unionid:{},openid:{},response:{}", user.getUnionId(),openid,body);
             return ApiResponse.ok(body);
         } catch (Exception e) {
             log.error(e.getMessage(), e);
