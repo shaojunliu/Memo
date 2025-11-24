@@ -97,7 +97,8 @@ public class WxController {
     /** 微信消息推送入口（明文模式） */
     @PostMapping(produces = "application/xml;charset=UTF-8")
     public String receive(@RequestBody String xml) {
-        log.info("[WX POST] {}", xml);
+        log.info("[WX chat request] {}", xml);
+        long start = System.currentTimeMillis();
 
         String toUser   = cdata(xml, "ToUserName");
         String fromUser = cdata(xml, "FromUserName"); // openid
@@ -134,6 +135,8 @@ public class WxController {
                 return r;
             }, recordService.executorFor(finalUnionid)).join();
 
+            long end = System.currentTimeMillis();
+            log.info("WX chat cost:{}", (end - start));
             return textReply(fromUser, toUser, reply);
         } catch (Exception e) {
             log.error("[WX] handle error, traceId={}", traceId, e);
