@@ -5,6 +5,8 @@ import jakarta.websocket.server.PathParam;
 import jakarta.websocket.server.ServerEndpoint;
 import lombok.extern.slf4j.Slf4j;
 import org.Memo.Config.SpringEndpointConfigurator;
+import org.Memo.DTO.Chat.PreChat;
+import org.Memo.DTO.Chat.PreDailySummary;
 import org.Memo.Service.ChatRecordService;
 import org.Memo.Service.OkHttpAgentClient;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -71,7 +74,7 @@ public class ChatWebSocket {
             // 2) 调用 Agent（非流式）
             String reply;
             try {
-                reply = agentClient.chat(openid, message);
+                reply = agentClient.chatWs(openid, message,new ArrayList<PreChat>(),new ArrayList<PreDailySummary>());
                 if (reply == null) reply = "";
             } catch (Exception e) {
                 log.error("agent error", e);

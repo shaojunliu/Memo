@@ -4,13 +4,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.Memo.DTO.Chat.PreChat;
+import org.Memo.DTO.Chat.PreDailySummary;
 import org.Memo.Entity.User;
 import org.Memo.Repo.UserRepository;
 import org.Memo.Service.ChatRecordService;
 import org.Memo.Service.OkHttpAgentClient;
-import org.Memo.Service.WxAuthService;
+import org.Memo.Service.UserService;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
@@ -25,7 +26,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -34,11 +34,11 @@ import java.util.regex.Pattern;
 @RequestMapping("/wx")
 @RequiredArgsConstructor
 @Slf4j
-public class WxController {
+public class WxChatController {
 
     private final ChatRecordService recordService;
     private final OkHttpAgentClient agentClient;
-    private final UserRepository userRepository;
+    private final UserService userService;
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -109,20 +109,16 @@ public class WxController {
     public String receive(@RequestBody String xml) {
         log.info("[WX POST] {}", xml);
 
-        String fromUser = cdata(xml, "FromUserName"); // 用户 openid（服务号 openid）
-        String toUser   = cdata(xml, "ToUserName");   // 公众号 ghid
+        String fromUser = cdata(xml, "FromUserName"); // 用户 openid（服务号 openid
         String msgType  = cdata(xml, "MsgType");
         String content  = cdata(xml, "Content");
-        // 通过服务号 openid -> unionid，内部统一用 unionid 作为用户标识
-        String unionId = resolveUnionIdFromOaOpenId(fromUser);
 
         // 这里只处理文本消息，其它类型直接忽略
         if (!"text".equalsIgnoreCase(msgType)) {
             log.info("[WX POST] unsupported MsgType={}, ignore", msgType);
             return "success";
         }
-
-        // 生成 traceId 便于排查
+        String unionId = userService.getUnionIdByOaOpenId(fromUser);
         String traceId = UUID.randomUUID().toString();
         log.info("[WX POST] traceId={}, unionId={}, content={}", unionId, fromUser, content);
 
@@ -139,25 +135,7 @@ public class WxController {
                     recordService.append(sessionId, "user", content, now);
 
                     // 2. 调用 Agent 获取回复
-                    String reply;
-                    try {
-                        String raw = agentClient.chat(unionId, content);
-                        // 尝试解析 JSON {"reply":"xxx"}
-                        try {
-                            var node = objectMapper.readTree(raw);
-                            if (node.has("reply")) {
-                                reply = node.get("reply").asText();
-                            } else {
-                                reply = raw;
-                            }
-                        } catch (Exception jsonEx) {
-                            // 不是 JSON 就直接用原始内容
-                            reply = raw;
-                        }
-                    } catch (Exception e) {
-                        log.error("[WX] agent error, traceId={}", traceId, e);
-                        reply = "（服务异常，请稍后再试）";
-                    }
+                    String reply = getReply(unionId, content, traceId);
 
                     // 3. 写入助手消息
                     recordService.append(sessionId, "assistant", reply, Instant.now());
@@ -174,7 +152,29 @@ public class WxController {
         return "success";
     }
 
-    // ========= 工具方法 =========
+    private String getReply(String unionId, String content, String traceId) {
+        String reply;
+        try {
+            String raw = agentClient.chat(unionId, content,new ArrayList<PreChat>(),new ArrayList<PreDailySummary>());
+            // 尝试解析 JSON {"reply":"xxx"}
+            try {
+                var node = objectMapper.readTree(raw);
+                if (node.has("reply")) {
+                    reply = node.get("reply").asText();
+                } else {
+                    reply = raw;
+                }
+            } catch (Exception jsonEx) {
+                // 不是 JSON 就直接用原始内容
+                reply = raw;
+            }
+        } catch (Exception e) {
+            log.error("[WX] agent error, traceId={}", traceId, e);
+            reply = "（服务异常，请稍后再试）";
+        }
+        return reply;
+    }
+
 
     private boolean checkSignature(String token, String timestamp, String nonce, String signature) throws Exception {
         String[] arr = {token, timestamp, nonce};
@@ -196,23 +196,9 @@ public class WxController {
         return m.find() ? m.group(1).trim() : "";
     }
 
-    private String textReply(String toUserOpenId, String fromGhid, String text) {
-        long now = System.currentTimeMillis() / 1000;
-        return """
-               <xml>
-                 <ToUserName><![CDATA[%s]]></ToUserName>
-                 <FromUserName><![CDATA[%s]]></FromUserName>
-                 <CreateTime>%d</CreateTime>
-                 <MsgType><![CDATA[text]]></MsgType>
-                 <Content><![CDATA[%s]]></Content>
-               </xml>
-               """.formatted(toUserOpenId, fromGhid, now, text);
-    }
-
 
     /** 获取公众号 access_token（带简单内存缓存） */
     private String getOfficialAccessToken() {
-        long now = System.currentTimeMillis();
 
         String url = "https://api.weixin.qq.com/cgi-bin/token"
                 + "?grant_type=client_credential"
@@ -231,75 +217,6 @@ public class WxController {
         } catch (Exception e) {
             throw new RuntimeException("parse access_token failed: " + resp, e);
         }
-    }
-
-    /** 根据服务号 openid 调公众号接口拿 unionid */
-    private String getUnionIdByOaOpenid(String oaOpenid) {
-        String accessToken = getOfficialAccessToken();
-
-        String url = "https://api.weixin.qq.com/cgi-bin/user/info"
-                + "?access_token=" + accessToken
-                + "&openid=" + oaOpenid
-                + "&lang=zh_CN";
-
-        log.info("OA user info url = {}", url);
-        String respStr = restTemplate.getForObject(url, String.class);
-        log.info("OA user info resp = {}", respStr);
-
-        try {
-            var json = objectMapper.readTree(respStr);
-            if (json.has("errcode")) {
-                log.error("getUnionIdByOaOpenid error: {}", respStr);
-                return null;
-            }
-            if (json.has("unionid")) {
-                return json.get("unionid").asText();
-            } else {
-                log.warn("no unionid in OA user info, openid={}", oaOpenid);
-                return null;
-            }
-        } catch (Exception e) {
-            log.error("parse OA user info failed", e);
-            return null;
-        }
-    }
-
-    /** 对外统一方法：根据服务号 openid 找到 unionid（优先用已有的 union_id 字段） */
-    private String resolveUnionIdFromOaOpenId(String oaOpenid) {
-        // Step1: 按 oa_openid 查
-        User user = userRepository.findByOaOpenid(oaOpenid).orElse(null);
-        if (user != null && StringUtils.hasText(user.getUnionId())) {
-            return user.getUnionId();  // 已有 unionid，直接返回
-        }
-
-        // Step2: 去微信拿 unionid
-        String unionId = getUnionIdByOaOpenid(oaOpenid);
-        if (!StringUtils.hasText(unionId)) {
-            // 极端情况：拿不到 unionid，就先用 oa_openid 顶一下（避免整个流程挂）
-            log.warn("resolveUnionIdFromOaOpenid: unionid is null, fallback to oa_openid={}", oaOpenid);
-            return oaOpenid;
-        }
-
-        // Step3: 看 unionid 在库里是否已有对应用户（小程序那边登录过）
-        User unionUser = userRepository.findByUnionId(unionId).orElse(null);
-        if (unionUser != null) {
-            // 小程序用户已存在，只需要补上 oa_openid 即可
-            if (!oaOpenid.equals(unionUser.getOaOpenId())) {
-                unionUser.setOaOpenId(oaOpenid);
-                userRepository.save(unionUser);
-            }
-            return unionId;
-        }
-
-        // Step4: 既没有 oa_openid 记录，也没有 unionid 记录，新建一个用户
-        if (user == null) {
-            user = new User();
-            user.setOaOpenId(oaOpenid);
-        }
-        user.setUnionId(unionId);
-        userRepository.save(user);
-
-        return unionId;
     }
 
     // ======================= 5. 客服消息推送 =======================
