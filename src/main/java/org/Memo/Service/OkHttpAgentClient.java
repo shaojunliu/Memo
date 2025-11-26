@@ -1,12 +1,17 @@
 package org.Memo.Service;
+import com.alibaba.fastjson2.JSON;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
+import org.Memo.DTO.Chat.ChatRequest;
+import org.Memo.DTO.Chat.PreChat;
+import org.Memo.DTO.Chat.PreDailySummary;
 import org.Memo.DTO.Chat.SummarizeResult;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -60,8 +65,24 @@ public class OkHttpAgentClient implements AgentClient {
         }
     }
     /** 一问一答：发一条，收第一段回复返回（如需拼接流式，可扩展） */
-    public String chat(String openid, String message) {
-        String payload = "{\"openid\":\"" + esc(openid) + "\",\"message\":\"" + esc(message) + "\"}";
+    public String chat(String openid, String message, List<PreChat> preChat,List<PreDailySummary> preDailySummary) {
+        ChatRequest  chatRequest = new ChatRequest();
+        chatRequest.setOpenid(openid);
+        chatRequest.setMessage(message);
+        chatRequest.setPreChat(preChat);
+        chatRequest.setPreDailySummary(preDailySummary);
+        String payload = JSON.toJSONString(chatRequest);
+        return sendAndWaitOnce(payload, Duration.ofSeconds(timeoutSeconds));
+    }
+
+    @Override
+    public String chatWs(String openid, String message, List<PreChat> preChat, List<PreDailySummary> preDailySummary) {
+        ChatRequest  chatRequest = new ChatRequest();
+        chatRequest.setOpenid(openid);
+        chatRequest.setMessage(message);
+        chatRequest.setPreChat(preChat);
+        chatRequest.setPreDailySummary(preDailySummary);
+        String payload = JSON.toJSONString(chatRequest);
         return sendAndWaitOnce(payload, Duration.ofSeconds(timeoutSeconds));
     }
 
@@ -163,12 +184,8 @@ public class OkHttpAgentClient implements AgentClient {
         }
     }
 
-    private static boolean looksLikeJson(String s) {
-        String t = s.trim();
-        return (t.startsWith("{") && t.endsWith("}")) || (t.startsWith("[") && t.endsWith("]"));
-    }
     private static String trimEnd(String s){ return s.endsWith("/") ? s.substring(0, s.length()-1) : s; }
-    private static String esc(String s){ return s == null ? "" : s.replace("\\","\\\\").replace("\"","\\\""); }
+
     @SuppressWarnings("unused")
     private static String enc(String s){ return URLEncoder.encode(s==null?"":s, StandardCharsets.UTF_8); }
 

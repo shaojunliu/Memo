@@ -13,6 +13,7 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.nio.charset.StandardCharsets;
@@ -56,7 +57,7 @@ public class WxAuthService {
         }
 
         // 拿到全局唯一id openId 查找或存储用户信息
-        User u = userRepo.findByOpenId(wx.openid).orElseGet(() -> {
+        User u = userRepo.findByUnionId(wx.unionid).orElseGet(() -> {
             User nu = new User();
             nu.setOpenId(wx.openid);
             nu.setUnionId(wx.unionid);
@@ -67,6 +68,9 @@ public class WxAuthService {
             nu.setCreatedAt(beijingTime.toInstant());
             return userRepo.save(nu);
         });
+        if (StringUtils.isEmpty(u.getOpenId())) {
+            u.setOpenId(wx.openid);
+        }
 
         u.setLastLoginIp(ip);
         u.setLastLoginAt(Instant.now());

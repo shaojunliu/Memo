@@ -2,10 +2,12 @@ package org.Memo.DTO.Chat;
 
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class ChatRequest {
-    private String userId;
+    private String openid;
     private String message;
-    // 可选：会话ID、情绪阶段、上下文等
-    // getters/setters/constructors
+    private List<PreChat> preChat;
+    private List<PreDailySummary> preDailySummary;
 }
