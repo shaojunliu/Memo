@@ -4,11 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.Memo.DTO.Chat.PreChat;
-import org.Memo.DTO.Chat.PreDailySummary;
-import org.Memo.Entity.User;
-import org.Memo.Repo.UserRepository;
+import org.Memo.DTO.SummaryModel;
 import org.Memo.Service.ChatRecordService;
+import org.Memo.Service.DailySummaryService;
 import org.Memo.Service.OkHttpAgentClient;
 import org.Memo.Service.UserService;
 import org.springframework.beans.factory.annotation.Value;
@@ -42,6 +40,8 @@ public class WxChatController {
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ChatRecordService chatRecordService;
+    private final DailySummaryService dailySummaryService;
 
     // 使用服务号的 appid / secret（不要用小程序的）
     @Value("${wx.oa.appid}")
@@ -155,7 +155,9 @@ public class WxChatController {
     private String getReply(String unionId, String content, String traceId) {
         String reply;
         try {
-            String raw = agentClient.chat(unionId, content,new ArrayList<PreChat>(),new ArrayList<PreDailySummary>());
+            List<ChatRecordService.MsgItem> preChat = chatRecordService.getPreChatByUnionId(unionId);
+            List<SummaryModel> preSummary = dailySummaryService.getPreSummaryByUnionId(unionId);
+            String raw = agentClient.chat(unionId, content,preChat,preSummary);
             // 尝试解析 JSON {"reply":"xxx"}
             try {
                 var node = objectMapper.readTree(raw);

@@ -5,8 +5,7 @@ import jakarta.websocket.server.PathParam;
 import jakarta.websocket.server.ServerEndpoint;
 import lombok.extern.slf4j.Slf4j;
 import org.Memo.Config.SpringEndpointConfigurator;
-import org.Memo.DTO.Chat.PreChat;
-import org.Memo.DTO.Chat.PreDailySummary;
+import org.Memo.DTO.SummaryModel;
 import org.Memo.Service.ChatRecordService;
 import org.Memo.Service.OkHttpAgentClient;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -74,7 +73,7 @@ public class ChatWebSocket {
             // 2) 调用 Agent（非流式）
             String reply;
             try {
-                reply = agentClient.chatWs(openid, message,new ArrayList<PreChat>(),new ArrayList<PreDailySummary>());
+                reply = agentClient.chatWs(openid, message,new ArrayList<>(),new ArrayList<>());
                 if (reply == null) reply = "";
             } catch (Exception e) {
                 log.error("agent error", e);
