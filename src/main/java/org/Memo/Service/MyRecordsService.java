@@ -17,6 +17,7 @@ public class MyRecordsService {
     private final UserRepository userRepository;
     private final ChatRecordRepository chatRecordRepository;
     private final DailyArticleSummaryRepository dailyArticleSummaryRepository;
+    private final UserService userService;
 
 
     public RecordModel getMyRecords(String openId) {
@@ -32,10 +33,11 @@ public class MyRecordsService {
                 .orElse(0);
 
         // 2) 不忘条数（chat_record 表该 openid 的记录数）
-        long buWangCount = chatRecordRepository.countByOpenId(openId);
+        String unionId = userService.getUnionIdByOaOpenId(openId);
+        long buWangCount = chatRecordRepository.countByOpenId(unionId);
 
         // 3) 回响篇数（summary/daily_article_summary 表该 openid 的条数）
-        long huiXiangCount = dailyArticleSummaryRepository.countByOpenId(openId);
+        long huiXiangCount = dailyArticleSummaryRepository.countByOpenId(unionId);
 
         // 4) 每日回响时间（写死每天零点）
         return RecordModel.builder()

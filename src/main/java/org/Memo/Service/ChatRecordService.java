@@ -1,5 +1,6 @@
 package org.Memo.Service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -9,6 +10,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.*;
 
@@ -92,5 +96,31 @@ public class ChatRecordService {
 
     // 简单的消息结构（用于序列化到 msgs）
     public record MsgItem(int seq, String ts, String role, String content) {}
+
+    public List<MsgItem> getPreChatByUnionId(String unionId) {
+        List<MsgItem> result = new ArrayList<>();
+        List<ChatRecord> records = repo.findByUnionId(unionId);
+        log.info("getPreChatByUnionId records:{}", records);
+        if (records == null || records.isEmpty()) return result;
+        for (ChatRecord record : records) {
+            String msgs = record.getMsgs();
+            List<MsgItem> msgItems = parseMsgs(msgs);
+            result.addAll(msgItems);
+        }
+        return result;
+    }
+
+    public List<MsgItem> parseMsgs(String msgs) {
+        if (msgs == null || msgs.isBlank()) {
+            return Collections.emptyList();
+        }
+        try {
+            return new ObjectMapper().readValue(msgs, new TypeReference<List<MsgItem>>() {});
+        } catch (Exception e) {
+            log.info("Failed to parse MsgItem list", e);
+            return Collections.emptyList();
+        }
+    }
+
 
 }

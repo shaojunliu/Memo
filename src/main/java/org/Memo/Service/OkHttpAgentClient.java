@@ -5,16 +5,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.Memo.DTO.Chat.ChatRequest;
-import org.Memo.DTO.Chat.PreChat;
-import org.Memo.DTO.Chat.PreDailySummary;
 import org.Memo.DTO.Chat.SummarizeResult;
+import org.Memo.DTO.SummaryModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -36,25 +33,16 @@ public class OkHttpAgentClient implements AgentClient {
     @Value("${agent.url}")
     private String ws_url;
 
+    private String chat_url;
+
     private final OkHttpClient client = new OkHttpClient.Builder()
             .connectTimeout(5, TimeUnit.SECONDS)
             .readTimeout(0, TimeUnit.MILLISECONDS) // WS 长连接读不超时
             .build();
 
-    // 与我们之前约定的输出格式对应的正则解析：
-    // # 每日总结\n(正文)\n# 今日情绪关键词\n词1, 词2, 词3
-    private static final Pattern P_SUMMARY = Pattern.compile(
-            "#\\s*每日总结\\s*(.+?)#\\s*今日情绪关键词",
-            Pattern.CASE_INSENSITIVE | Pattern.DOTALL
-    );
-    private static final Pattern P_MOOD = Pattern.compile(
-            "#\\s*今日情绪关键词\\s*(.+)$",
-            Pattern.CASE_INSENSITIVE | Pattern.DOTALL
-    );
-
     private static final ObjectMapper MAPPER = new ObjectMapper().registerModule(new JavaTimeModule());
 
-    @Value("${agent.ws.timeoutSeconds:60}")
+    @Value("${agent.ws.timeoutSeconds:300}")
     private int timeoutSeconds;
 
     @jakarta.annotation.PostConstruct
@@ -65,7 +53,7 @@ public class OkHttpAgentClient implements AgentClient {
         }
     }
     /** 一问一答：发一条，收第一段回复返回（如需拼接流式，可扩展） */
-    public String chat(String openid, String message, List<PreChat> preChat,List<PreDailySummary> preDailySummary) {
+    public String chat(String openid, String message, List<ChatRecordService.MsgItem> preChat, List<SummaryModel> preDailySummary) {
         ChatRequest  chatRequest = new ChatRequest();
         chatRequest.setOpenid(openid);
         chatRequest.setMessage(message);
@@ -76,7 +64,7 @@ public class OkHttpAgentClient implements AgentClient {
     }
 
     @Override
-    public String chatWs(String openid, String message, List<PreChat> preChat, List<PreDailySummary> preDailySummary) {
+    public String chatWs(String openid, String message, List<ChatRecordService.MsgItem> preChat, List<SummaryModel> preDailySummary) {
         ChatRequest  chatRequest = new ChatRequest();
         chatRequest.setOpenid(openid);
         chatRequest.setMessage(message);
@@ -183,6 +171,46 @@ public class OkHttpAgentClient implements AgentClient {
             throw new RuntimeException("Agent WS interrupted", ie);
         }
     }
+
+    /**
+     * 使用 HTTP 调用 Agent，一问一答：发一段 JSON，返回完整字符串响应
+     */
+    private String sendHttpOnce(String payload) {
+        String httpUrl = toHttpUrl(trimEnd(chat_url));
+        RequestBody body = RequestBody.create(
+                payload,
+                okhttp3.MediaType.parse("application/json; charset=utf-8")
+        );
+        Request request = new Request.Builder()
+                .url(httpUrl)
+                .post(body)
+                .build();
+
+        try (Response response = client.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                throw new RuntimeException("Agent HTTP failed, code=" + response.code());
+            }
+            ResponseBody respBody = response.body();
+            return respBody != null ? respBody.string() : "";
+        } catch (Exception e) {
+            throw new RuntimeException("Agent HTTP error", e);
+        }
+    }
+
+    private static String toHttpUrl(String wsUrl) {
+        if (wsUrl == null) {
+            return null;
+        }
+        if (wsUrl.startsWith("ws://")) {
+            return "http://" + wsUrl.substring(5);
+        }
+        if (wsUrl.startsWith("wss://")) {
+            return "https://" + wsUrl.substring(6);
+        }
+        return wsUrl;
+    }
+
+
 
     private static String trimEnd(String s){ return s.endsWith("/") ? s.substring(0, s.length()-1) : s; }
 

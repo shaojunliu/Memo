@@ -1,9 +1,13 @@
 package org.Memo.Service;
+import com.alibaba.fastjson2.JSON;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.Memo.DTO.DaillySummarysModel;
 import org.Memo.DTO.GetSummaryDetailReq;
 import org.Memo.DTO.GetSummaryDetailRes;
 import org.Memo.DTO.SummaryModel;
+import org.Memo.Entity.ChatRecord;
 import org.Memo.Entity.DailyArticleSummaryEntity;
 import org.Memo.Repo.DailyArticleSummaryRepository;
 import org.springframework.stereotype.Service;
@@ -11,8 +15,12 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DailySummaryService {
@@ -81,6 +89,30 @@ public class DailySummaryService {
         String month = String.format("%02d", d.getMonthValue());
         String date = String.format("%02d", d.getDayOfMonth());
         return new DateParts(year, month, date);
+    }
+
+    public List<SummaryModel> getPreSummaryByUnionId(String unionId) throws JsonProcessingException {
+        List<SummaryModel> result = new ArrayList<>();
+        List<DailyArticleSummaryEntity> articles = repo.findByOpenIdOrderBySummaryDateDesc(unionId);
+        log.info("getPreSummaryByUnionId articles: {}", JSON.toJSONString(articles));
+        if (articles == null || articles.isEmpty()) return result;
+        for (DailyArticleSummaryEntity article : articles) {
+            SummaryModel summaryModel = new SummaryModel();
+            summaryModel.setArticle(article.getArticle() == null ? "" : article.getArticle());
+            summaryModel.setArticleTitle(article.getArticleTitle() == null ? "" : article.getArticleTitle());
+            summaryModel.setActionKeywords(article.getActionKeywords() == null ? "" : article.getActionKeywords());
+            summaryModel.setMoodKeywords(article.getMoodKeywords() == null ? "" : article.getMoodKeywords());
+
+            String date = article.getSummaryDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+
+            long ts = Optional.ofNullable(article.getSummaryDate()).orElse(LocalDate.now())
+                    .atStartOfDay(ZoneId.systemDefault())
+                    .toInstant()
+                    .toEpochMilli();
+            summaryModel.setCreatTime(ts);
+            result.add(summaryModel);
+        }
+        return result;
     }
 
     private record DateParts(String year, String month, String date) {}
