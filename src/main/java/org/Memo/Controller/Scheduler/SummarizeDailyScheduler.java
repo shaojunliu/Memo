@@ -29,7 +29,7 @@ public class SummarizeDailyScheduler {
         log.info("SummarizeDailyScheduler Begin");
         ZoneId zone = ZoneId.of(tz);
         LocalDate target = ZonedDateTime.now(zone).minusDays(1).toLocalDate();
-        service.summarizeForDate(target);
+        service.summarizeForDate(target,null);
     }
 
     // 如果你还需要“每周日 00:00 回顾上周 7 天”的任务，保留这个：

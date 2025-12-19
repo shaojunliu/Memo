@@ -1,6 +1,7 @@
 package org.Memo.DTO.Login;
 
 import lombok.Data;
+import org.Memo.DTO.Position;
 
 // 请求体：
 @Data
@@ -11,5 +12,6 @@ public class LoginRequest {
     private String encryptedData;
     private String ip;
     private String phoneCode;
+    private Position userPosition;
 }
 

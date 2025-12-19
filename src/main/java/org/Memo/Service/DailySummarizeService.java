@@ -15,10 +15,12 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.*;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.springframework.util.CollectionUtils;
 
 
 @Slf4j
@@ -32,40 +34,60 @@ public class DailySummarizeService {
     private final AgentClient agentClient; // 封装HTTP调用Agent
     @Value("${app.tz}") private String tz;
 
-    public void summarizeForDate(LocalDate targetDate) {
+    public void summarizeForDate(LocalDate targetDate, List<String> orderUnionIds) {
         ZoneId zone = ZoneId.of(tz);
         Instant start = targetDate.atStartOfDay(zone).toInstant();
         Instant end   = targetDate.atStartOfDay(zone).plusDays(1).toInstant();
         log.info("summarizeForDate start:{} end:{}", start, end);
-        List<String> openIds = chatRepo.findDistinctOpenIdsByDay(start, end);
-        log.info("openIds:{}", openIds);
-        // 简单并行（注意限速/线程池）
-        openIds.parallelStream().forEach(openId -> {
+
+        // 1) 定时批量：orderUnionId 为空 -> 找当天所有 unionId，已存在则跳过（幂等）
+        // 2) 手动触发：指定 orderUnionId -> 只跑该 unionId，并强制覆盖（即使已存在也会重算并 upsert）
+        final boolean manualOverride = !CollectionUtils.isEmpty(orderUnionIds);
+
+        List<String> unionIds;
+        if (manualOverride) {
+            unionIds = orderUnionIds;
+        } else {
+            unionIds = chatRepo.findDistinctOpenIdsByDay(start, end);
+        }
+
+        log.info("summarizeForDate date={} manualOverride={} unionIds={}", targetDate, manualOverride, unionIds);
+
+        // 简单并行（注意限速/线程池）。手动触发通常只 1 个 unionId。
+        unionIds.parallelStream().forEach(unionId -> {
             try {
-                if (summaryRepo.existsByOpenIdAndSummaryDate(openId, targetDate)) return; // 幂等跳过
-
-                log.info("summarizeForDate openId unexists:{}", openId);
-                List<ChatRecord> msgs = chatRepo.findMessagesByOpenIdAndDay(openId, start, end);
-                log.info("msgs:{}", msgs);
-                if (msgs == null || msgs.isEmpty()) return;
-
-                String packed = packMessages(msgs, zone);
-                log.info("packed:{}", packed);
-                SummarizeResult res = agentClient.summarizeDay(openId, packed); // 调Agent：含重试
-                log.info("res:{}", res);
-                // 新增的兜底
-                if (res == null || StringUtils.isBlank(res.getArticle())) {
-                    log.warn("skip upsert: empty article, openId={} date={}", openId, targetDate);
+                // 定时批量才做幂等跳过；手动触发要允许覆盖旧结果
+                if (!manualOverride && summaryRepo.existsByOpenIdAndSummaryDate(unionId, targetDate)) {
                     return;
                 }
+
+                log.info("summarizeForDate processing unionId={} date={} manualOverride={}", unionId, targetDate, manualOverride);
+
+                List<ChatRecord> msgs = chatRepo.findMessagesByOpenIdAndDay(unionId, start, end);
+                if (msgs == null || msgs.isEmpty()) {
+                    log.info("summarizeForDate no msgs, unionId={} date={}", unionId, targetDate);
+                    return;
+                }
+
+                String packed = packMessages(msgs, zone);
+                SummarizeResult res = agentClient.summarizeDay(unionId, packed); // 调Agent：含重试
+
+                // 兜底：避免把原有总结覆盖成空
+                if (res == null || StringUtils.isBlank(res.getArticle())) {
+                    log.warn("skip upsert: empty article, unionId={} date={} manualOverride={}", unionId, targetDate, manualOverride);
+                    return;
+                }
+
+                // upsert 本身应覆盖旧内容；手动触发会强制走到这里
                 summaryRepo.upsertSummary(
-                        openId, targetDate,
-                        res.getArticle(), res.getMoodKeywords(),res.getActionKeywords(),res.getArticleTitle(),
+                        unionId, targetDate,
+                        res.getArticle(), res.getMoodKeywords(), res.getActionKeywords(), res.getArticleTitle(),
                         res.getModel(), Optional.ofNullable(res.getTokenUsageJson()).orElse("{}")
                 );
+
+                log.info("summarizeForDate upsert ok, unionId={} date={} manualOverride={}", unionId, targetDate, manualOverride);
             } catch (Exception e) {
-                // 记录错误并继续其他 open_id
-                log.error("summarize fail openId={} date={}", openId, targetDate, e);
+                log.error("summarize fail unionId={} date={} manualOverride={}", unionId, targetDate, manualOverride, e);
             }
         });
     }
