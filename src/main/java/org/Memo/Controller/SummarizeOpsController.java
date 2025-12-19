@@ -19,9 +19,10 @@ public class SummarizeOpsController {
 
     @PostMapping("/daily")
     public String daily(@RequestParam("date") String date,
-                        @RequestParam(value = "tz", defaultValue = "Asia/Shanghai") String tz) {
+                        @RequestParam(value = "tz", defaultValue = "Asia/Shanghai") String tz,
+                        @RequestParam("unionId") String unionId) {
         LocalDate d = LocalDate.parse(date); // 例如 2025-10-10
-        service.summarizeForDate(d);
+        service.summarizeForDate(d,unionId);
         return "OK " + d;
     }
 

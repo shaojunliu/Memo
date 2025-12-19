@@ -32,7 +32,7 @@ public class DailySummarizeService {
     private final AgentClient agentClient; // 封装HTTP调用Agent
     @Value("${app.tz}") private String tz;
 
-    public void summarizeForDate(LocalDate targetDate) {
+    public void summarizeForDate(LocalDate targetDate,String unionId) {
         ZoneId zone = ZoneId.of(tz);
         Instant start = targetDate.atStartOfDay(zone).toInstant();
         Instant end   = targetDate.atStartOfDay(zone).plusDays(1).toInstant();
