@@ -15,10 +15,12 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.*;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.springframework.util.CollectionUtils;
 
 
 @Slf4j
@@ -32,7 +34,7 @@ public class DailySummarizeService {
     private final AgentClient agentClient; // 封装HTTP调用Agent
     @Value("${app.tz}") private String tz;
 
-    public void summarizeForDate(LocalDate targetDate, String orderUnionId) {
+    public void summarizeForDate(LocalDate targetDate, List<String> orderUnionIds) {
         ZoneId zone = ZoneId.of(tz);
         Instant start = targetDate.atStartOfDay(zone).toInstant();
         Instant end   = targetDate.atStartOfDay(zone).plusDays(1).toInstant();
@@ -40,11 +42,11 @@ public class DailySummarizeService {
 
         // 1) 定时批量：orderUnionId 为空 -> 找当天所有 unionId，已存在则跳过（幂等）
         // 2) 手动触发：指定 orderUnionId -> 只跑该 unionId，并强制覆盖（即使已存在也会重算并 upsert）
-        final boolean manualOverride = !StringUtils.isBlank(orderUnionId);
+        final boolean manualOverride = !CollectionUtils.isEmpty(orderUnionIds);
 
         List<String> unionIds;
         if (manualOverride) {
-            unionIds = List.of(orderUnionId);
+            unionIds = orderUnionIds;
         } else {
             unionIds = chatRepo.findDistinctOpenIdsByDay(start, end);
         }
