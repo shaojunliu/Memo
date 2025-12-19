@@ -2,19 +2,21 @@ name: MemoService CI/CD
 
 on:
   push:
-    branches: [ "main" ]   # 你要在 main 分支合并后触发
+    branches: [ "main", "master" ]   # main/master 推送都触发
   workflow_dispatch: {}
 
 env:
   IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/memoservice
   DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/apps/stack' }}
   COMPOSE_FILE: ${{ secrets.COMPOSE_FILE || 'docker-compose.yml' }}
-  COMPOSE_SRC: docker-compose.yml
+  COMPOSE_SRC: docker-compose.rendered.yml
   COMPOSE_DST: ${{ secrets.COMPOSE_FILE || 'docker-compose.yml' }}
   SERVICE_NAME: ${{ secrets.MEMO_SERVICE_NAME || 'memoservice' }}  # 默认 memoservice
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.vars.outputs.image_tag }}
     permissions:
       contents: read
       packages: write
@@ -41,6 +43,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Compute image tag (date + seq)
+        id: vars
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          # GitHub run_number 会自增，这里取后三位当序号（001/002/...）
+          SEQ=$(printf "%03d" $(( ${{ github.run_number }} % 1000 )) )
+          TAG="${DATE}-${SEQ}"
+          echo "image_tag=${TAG}" >> $GITHUB_OUTPUT
+
       - name: Build & Push Image
         uses: docker/build-push-action@v6
         with:
@@ -48,13 +59,21 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.image_tag }}
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
   upload-compose:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Render compose with new image tag
+        run: |
+          set -e
+          TAG="${{ needs.build-and-push.outputs.image_tag }}"
+          echo "Using IMAGE_TAG=$TAG"
+          # 把 docker-compose.yml 里的 memoservice 镜像 tag 替换成新 tag，输出到 docker-compose.rendered.yml
+          sed -E "s#(image:\s*${{ env.IMAGE_NAME }}:).*#\\1${TAG}#" docker-compose.yml > "${{ env.COMPOSE_SRC }}"
+          echo "Rendered compose:" && head -n 80 "${{ env.COMPOSE_SRC }}"
       - name: Upload compose to server
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -81,7 +100,7 @@ jobs:
             else
               echo "Source equals destination ($SRC). Skip move."
             fi
-            
+
   deploy:
     needs: upload-compose
     runs-on: ubuntu-latest
@@ -96,6 +115,7 @@ jobs:
           script: |
             docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" -p "${{ secrets.GHCR_READ_TOKEN }}"
             cd "${{ env.DEPLOY_PATH }}"
+            echo "Deploying memoservice image tag: ${{ needs.build-and-push.outputs.image_tag }}"
             # 如果有老的 memo 容器，还在占 8080，这里强制删掉
             docker rm -f memo 2>/dev/null || true
             docker compose -f "${{ env.COMPOSE_DST }}" pull ${{ env.SERVICE_NAME }}
