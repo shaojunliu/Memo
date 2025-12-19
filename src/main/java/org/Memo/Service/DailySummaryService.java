@@ -41,8 +41,8 @@ public class DailySummaryService {
                 LocalDate tmp = start; start = end; end = tmp;
             }
             LocalDate startDt = LocalDate.from(start.atStartOfDay());
-            LocalDateTime endDtExclusive = end.plusDays(1).atStartOfDay();
-            rows = repo.findByOpenIdAndSummaryDateBetweenOrderBySummaryDateDesc(openid, startDt, LocalDate.from(endDtExclusive));
+            LocalDateTime endDtInclusive = end.atStartOfDay();
+            rows = repo.findByOpenIdAndSummaryDateBetweenOrderBySummaryDateDesc(openid, startDt, LocalDate.from(endDtInclusive));
         } else {
             rows = repo.findByOpenIdOrderBySummaryDateDesc(openid);
         }
