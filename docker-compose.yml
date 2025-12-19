@@ -18,7 +18,8 @@ services:
       - appnet
 
   memoservice:
-    image: ghcr.io/shaojunliu/memoservice:latest
+    # CI/部署可通过在 /apps/stack/.env 里设置 MEMOSERVICE_TAG 来指定镜像版本；不设置则默认 latest
+    image: ghcr.io/shaojunliu/memoservice:${MEMOSERVICE_TAG:-latest}
     container_name: memoservice
     env_file:
       - /apps/stack/.env
@@ -52,7 +53,8 @@ services:
       APP_AGENT_BASE_URL: ws://agent:8001/ws/chat   # 内网调用
 
   agent:
-    image: ghcr.io/shaojunliu/agent:latest
+    # CI/部署可通过在 /apps/stack/.env 里设置 AGENT_TAG 来指定镜像版本；不设置则默认 latest
+    image: ghcr.io/shaojunliu/agent:${AGENT_TAG:-latest}
     container_name: agent
     env_file:
       - /apps/stack/.env
@@ -62,7 +64,7 @@ services:
       - appnet
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8001/healthz"]
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/healthz').read()" ]
       interval: 15s
       timeout: 5s
       retries: 5

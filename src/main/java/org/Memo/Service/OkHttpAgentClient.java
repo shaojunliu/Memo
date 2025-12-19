@@ -98,12 +98,12 @@ public class OkHttpAgentClient implements AgentClient {
             headers.setContentType(MediaType.APPLICATION_JSON);
             String reqJson = MAPPER.writeValueAsString(req);
 
-            log.info("reqJson={}", reqJson);
             HttpEntity<String> entity = new HttpEntity<>(reqJson, headers);
 
             // 调用 Agent 服务
             String url = "http://agent:8001/summary/daily";
             String resp = restTemplate.postForObject(url, entity, String.class);
+            log.info("summarizeDay unionId :{} ,resp={}, reqJson:{}",openId, resp, reqJson);
 
             if (resp == null || resp.isBlank()) return defaultResult;
 
