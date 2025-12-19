@@ -32,40 +32,39 @@ public class DailySummarizeService {
     private final AgentClient agentClient; // 封装HTTP调用Agent
     @Value("${app.tz}") private String tz;
 
-    public void summarizeForDate(LocalDate targetDate,String unionId) {
+    public void summarizeForDate(LocalDate targetDate,String orderUnionId) {
         ZoneId zone = ZoneId.of(tz);
         Instant start = targetDate.atStartOfDay(zone).toInstant();
         Instant end   = targetDate.atStartOfDay(zone).plusDays(1).toInstant();
         log.info("summarizeForDate start:{} end:{}", start, end);
-        List<String> openIds = chatRepo.findDistinctOpenIdsByDay(start, end);
-        log.info("openIds:{}", openIds);
+        List<String> unionIds = chatRepo.findDistinctOpenIdsByDay(start, end);
+        log.info("unionIds:{}", unionIds);
         // 简单并行（注意限速/线程池）
-        openIds.parallelStream().forEach(openId -> {
+        unionIds.parallelStream().forEach(unionId -> {
             try {
-                if (summaryRepo.existsByOpenIdAndSummaryDate(openId, targetDate)) return; // 幂等跳过
+                if (summaryRepo.existsByOpenIdAndSummaryDate(unionId, targetDate)) return; // 幂等跳过
 
-                log.info("summarizeForDate openId unexists:{}", openId);
-                List<ChatRecord> msgs = chatRepo.findMessagesByOpenIdAndDay(openId, start, end);
+                log.info("summarizeForDate unionId unexists:{}", unionId);
+                List<ChatRecord> msgs = chatRepo.findMessagesByOpenIdAndDay(unionId, start, end);
                 log.info("msgs:{}", msgs);
                 if (msgs == null || msgs.isEmpty()) return;
 
                 String packed = packMessages(msgs, zone);
                 log.info("packed:{}", packed);
-                SummarizeResult res = agentClient.summarizeDay(openId, packed); // 调Agent：含重试
+                SummarizeResult res = agentClient.summarizeDay(unionId, packed); // 调Agent：含重试
                 log.info("res:{}", res);
                 // 新增的兜底
                 if (res == null || StringUtils.isBlank(res.getArticle())) {
-                    log.warn("skip upsert: empty article, openId={} date={}", openId, targetDate);
+                    log.warn("skip upsert: empty article, unionId={} date={}", unionId, targetDate);
                     return;
                 }
                 summaryRepo.upsertSummary(
-                        openId, targetDate,
+                        unionId, targetDate,
                         res.getArticle(), res.getMoodKeywords(),res.getActionKeywords(),res.getArticleTitle(),
                         res.getModel(), Optional.ofNullable(res.getTokenUsageJson()).orElse("{}")
                 );
             } catch (Exception e) {
-                // 记录错误并继续其他 open_id
-                log.error("summarize fail openId={} date={}", openId, targetDate, e);
+                log.error("summarize fail unionId={} date={}", unionId, targetDate, e);
             }
         });
     }
