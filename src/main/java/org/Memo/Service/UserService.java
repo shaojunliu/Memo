@@ -18,12 +18,12 @@ public class UserService {
         this.wxRepository = wxRepo;
     }
 
-    /** 对外统一方法：根据服务号 openid 找到 unionid（优先用已有的 union_id 字段） */
-    public String getUnionIdByOaOpenId(String oaOpenid) {
+    /** 对外统一方法：根据服务号 oaOpenid 找到 unionid（优先用已有的 union_id 字段） */
+    public User getUserByOaOpenId(String oaOpenid) {
         // Step1: 按 oa_openid 查 已有unionid直接返回
         User user = userRepository.findByOaOpenid(oaOpenid).orElse(null);
         if (user != null && StringUtils.hasText(user.getUnionId())) {
-            return user.getUnionId();
+            return user;
         }
 
         // Step2: 获取服务号token
@@ -33,7 +33,7 @@ public class UserService {
         String unionId = wxRepository.getUnionIdByOaOpenid(oaOpenid, accessToken);
         if (!StringUtils.hasText(unionId)) {
             log.error("resolveUnionIdFromOaOpenid: unionid is null, fallback to oa_openid={}", oaOpenid);
-            return oaOpenid;
+            return null;
         }
 
         // Step4: 看unionid 在库里是否已有对应用户（小程序那边登录过）
@@ -44,7 +44,7 @@ public class UserService {
                 unionUser.setOaOpenId(oaOpenid);
                 userRepository.save(unionUser);
             }
-            return unionId;
+            return unionUser;
         }
 
         // Step4: 既没有 oa_openid 记录，也没有 unionid 记录，新建一个用户
@@ -55,6 +55,6 @@ public class UserService {
         user.setUnionId(unionId);
         userRepository.save(user);
 
-        return unionId;
+        return user;
     }
 }

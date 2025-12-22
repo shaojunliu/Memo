@@ -10,6 +10,7 @@ import org.Memo.DTO.SummaryModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.net.URLEncoder;
@@ -53,14 +54,18 @@ public class OkHttpAgentClient implements AgentClient {
         }
     }
     /** 一问一答：发一条，收第一段回复返回（如需拼接流式，可扩展） */
-    public String chat(String openid, String message, List<ChatRecordService.MsgItem> preChat, List<SummaryModel> preDailySummary) {
+    public String chat(String openid, String message, List<ChatRecordService.MsgItem> preChat, List<SummaryModel> preDailySummary, HashMap<String, String> args) {
         ChatRequest  chatRequest = new ChatRequest();
         chatRequest.setOpenid(openid);
         chatRequest.setMessage(message);
         chatRequest.setPreChat(preChat);
         chatRequest.setPreDailySummary(preDailySummary);
+        chatRequest.setArgs(args);
         String payload = JSON.toJSONString(chatRequest);
-        return sendAndWaitOnce(payload, Duration.ofSeconds(timeoutSeconds));
+        log.info("chat json request={}",payload);
+        String response = sendAndWaitOnce(payload, Duration.ofSeconds(timeoutSeconds));
+        log.info("chat json response={}",response);
+        return response;
     }
 
     @Override

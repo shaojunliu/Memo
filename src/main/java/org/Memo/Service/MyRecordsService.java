@@ -2,6 +2,7 @@ package org.Memo.Service;
 
 import lombok.RequiredArgsConstructor;
 import org.Memo.DTO.RecordModel;
+import org.Memo.Entity.User;
 import org.Memo.Repo.ChatRecordRepository;
 import org.Memo.Repo.DailyArticleSummaryRepository;
 import org.Memo.Repo.UserRepository;
@@ -33,7 +34,11 @@ public class MyRecordsService {
                 .orElse(0);
 
         // 2) 不忘条数（chat_record 表该 openid 的记录数）
-        String unionId = userService.getUnionIdByOaOpenId(openId);
+        User user = userService.getUserByOaOpenId(openId);
+        if (user == null) {
+            return RecordModel.builder().build();
+        }
+        String unionId = user.getUnionId();
         long buWangCount = chatRecordRepository.countByOpenId(unionId);
 
         // 3) 回响篇数（summary/daily_article_summary 表该 openid 的条数）

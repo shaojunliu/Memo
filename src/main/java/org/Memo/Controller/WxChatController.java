@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.Memo.DTO.SummaryModel;
+import org.Memo.Entity.User;
 import org.Memo.Service.ChatRecordService;
 import org.Memo.Service.DailySummaryService;
 import org.Memo.Service.OkHttpAgentClient;
@@ -118,8 +119,18 @@ public class WxChatController {
             log.info("[WX POST] unsupported MsgType={}, ignore", msgType);
             return "success";
         }
-        String unionId = userService.getUnionIdByOaOpenId(fromUser);
+        User user = userService.getUserByOaOpenId(fromUser);
+        if (user == null) {
+            log.error("userService getUserByOaOpenId: user is null, fallback to oa_openid={}", fromUser);
+            return "fail";
+        }
+        String unionId = user.getUnionId();
         String traceId = UUID.randomUUID().toString();
+        HashMap<String, String> args = new HashMap<>();
+        args.put("lng", String.valueOf(user.getLastLoginLng()));
+        args.put("lat", String.valueOf(user.getLastLoginLat()));
+        args.put("traceId", traceId);
+
         log.info("[WX POST] traceId={}, unionId={}, content={}", unionId, fromUser, content);
 
         try {
@@ -135,7 +146,7 @@ public class WxChatController {
                     recordService.append(sessionId, "user", content, now);
 
                     // 2. 调用 Agent 获取回复
-                    String reply = getReply(unionId, content, traceId);
+                    String reply = getReply(unionId, content, traceId, args);
 
                     // 3. 写入助手消息
                     recordService.append(sessionId, "assistant", reply, Instant.now());
@@ -152,12 +163,12 @@ public class WxChatController {
         return "success";
     }
 
-    private String getReply(String unionId, String content, String traceId) {
+    private String getReply(String unionId, String content, String traceId, HashMap<String, String> args) {
         String reply;
         try {
             List<ChatRecordService.MsgItem> preChat = chatRecordService.getPreChatByUnionId(unionId);
             List<SummaryModel> preSummary = dailySummaryService.getPreSummaryByUnionId(unionId);
-            String raw = agentClient.chat(unionId, content,preChat,preSummary);
+            String raw = agentClient.chat(unionId, content,preChat,preSummary, args);
             // 尝试解析 JSON {"reply":"xxx"}
             try {
                 var node = objectMapper.readTree(raw);
