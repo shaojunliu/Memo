@@ -24,5 +24,12 @@ public class User {               // ★ public 顶级类，非 final，非内�
     private Instant lastLoginAt;
     private String lastLoginIp;
 
+    // 上次登录经纬度（WGS84）
+    @Column(name = "last_login_lat")
+    private Double lastLoginLat;
+
+    @Column(name = "last_login_lng")
+    private Double lastLoginLng;
+
     public User() {}              // ★ 必须有无参构造
 }
