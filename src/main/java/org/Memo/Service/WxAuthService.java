@@ -60,8 +60,12 @@ public class WxAuthService {
         }
 
         BeanWrapper bw = new BeanWrapperImpl(req);
-        Double reqLat = readDouble(bw, "lastLoginLat", "lat", "latitude");
-        Double reqLng = readDouble(bw, "lastLoginLng", "lng", "longitude");
+
+        Double reqLat = readDouble(bw, "lastLoginLat", "lat", "latitude",
+                "userPosition.latitude", "userPosition.lat");
+
+        Double reqLng = readDouble(bw, "lastLoginLng", "lng", "longitude",
+                "userPosition.longitude", "userPosition.lng");
 
         // 拿到全局唯一id openId 查找或存储用户信息
         User u = userRepo.findByUnionId(wx.unionid).orElseGet(() -> {
