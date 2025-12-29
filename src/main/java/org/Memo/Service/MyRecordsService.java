@@ -2,6 +2,7 @@ package org.Memo.Service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.Memo.DTO.ApiResponse;
 import org.Memo.DTO.RecordModel;
 import org.Memo.Entity.User;
 import org.Memo.Repo.ChatRecordRepository;
@@ -37,7 +38,7 @@ public class MyRecordsService {
                 .orElse(0);
 
         // 2) 不忘条数（chat_record 表该 openid 的记录数）
-        User user = userService.getUserByOaOpenId(openId);
+        User user = userRepository.findByOpenId(openId).orElse(null);
         if (user == null) {
             return RecordModel.builder().build();
         }
