@@ -64,7 +64,6 @@ public class OkHttpAgentClient implements AgentClient {
         String payload = JSON.toJSONString(chatRequest);
         log.info("chat json request={}",payload);
         String response = sendAndWaitOnce(payload, Duration.ofSeconds(timeoutSeconds));
-        log.info("chat json response={}",response);
         return response;
     }
 

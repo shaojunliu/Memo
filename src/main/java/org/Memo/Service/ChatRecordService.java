@@ -100,7 +100,6 @@ public class ChatRecordService {
     public List<MsgItem> getPreChatByUnionId(String unionId) {
         List<MsgItem> result = new ArrayList<>();
         List<ChatRecord> records = repo.findByUnionId(unionId);
-        log.info("getPreChatByUnionId records:{}", records);
         if (records == null || records.isEmpty()) return result;
         for (ChatRecord record : records) {
             String msgs = record.getMsgs();

@@ -94,7 +94,6 @@ public class DailySummaryService {
     public List<SummaryModel> getPreSummaryByUnionId(String unionId) throws JsonProcessingException {
         List<SummaryModel> result = new ArrayList<>();
         List<DailyArticleSummaryEntity> articles = repo.findByOpenIdOrderBySummaryDateDesc(unionId);
-        log.info("getPreSummaryByUnionId articles: {}", JSON.toJSONString(articles));
         if (articles == null || articles.isEmpty()) return result;
         for (DailyArticleSummaryEntity article : articles) {
             SummaryModel summaryModel = new SummaryModel();
