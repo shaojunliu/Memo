@@ -24,6 +24,9 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.regex.Matcher;
@@ -129,6 +132,9 @@ public class WxChatController {
         HashMap<String, String> args = new HashMap<>();
         args.put("lng", String.valueOf(user.getLastLoginLng()));
         args.put("lat", String.valueOf(user.getLastLoginLat()));
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy年MM月dd日HH时mm分");
+        String currentTime = LocalDateTime.now(ZoneId.systemDefault()).format(formatter);
+        args.put("currentTime", currentTime);
         args.put("traceId", traceId);
 
         log.info("[WX POST] traceId={}, unionId={}, content={}", unionId, fromUser, content);
