@@ -27,11 +27,11 @@ public class SummarizeOpsController {
 
         // 1) 未传 unionIds -> 走原有批量逻辑（当天全部用户，幂等）
         if (unionIds == null || unionIds.isEmpty()) {
-            service.summarizeForDate(d, null, false);
+            service.summarizeForDate(d, null, null);
             return "OK batch-all " + d;
         }
 
-        service.summarizeForDate(d, unionIds, true);
+        service.summarizeForDate(d, unionIds, null);
         return "OK batch-manual " + d + " unionIds=" + unionIds;
     }
 
