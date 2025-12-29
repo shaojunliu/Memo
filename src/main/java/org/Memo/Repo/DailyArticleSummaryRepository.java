@@ -23,7 +23,7 @@ public interface DailyArticleSummaryRepository extends JpaRepository<DailyArticl
     INSERT INTO daily_article_summary(
         open_id, summary_date, article, mood_keywords,action_keywords,memory_point,analyze_result,article_title, model, token_usage, created_at, updated_at
     )
-    VALUES(:openId, :summaryDate, :article, :moodKeywords, :actionKeywords, :articleTitle, :model,
+    VALUES(:openId, :summaryDate, :article, :moodKeywords, :actionKeywords,:memoryPoint,:analyzeResult , :articleTitle, :model,
            CAST(COALESCE(NULLIF(:tokenUsageJson, ''), '{}') AS jsonb),
            NOW(), NOW())
     ON CONFLICT (open_id, summary_date)
