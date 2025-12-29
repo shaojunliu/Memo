@@ -147,12 +147,14 @@ public class WxChatController {
                     Instant now = Instant.now();
                     var rec = recordService.createSession(unionId, now);
                     var sessionId = rec.getSessionId();
+                    List<ChatRecordService.MsgItem> preChat = chatRecordService.getPreChatByUnionId(unionId);
+
 
                     // 1. 记录用户消息
                     recordService.append(sessionId, "user", content, now);
 
                     // 2. 调用 Agent 获取回复
-                    String reply = getReply(unionId, content, traceId, args);
+                    String reply = getReply(unionId, content, traceId, args,preChat);
 
                     // 3. 写入助手消息
                     recordService.append(sessionId, "assistant", reply, Instant.now());
@@ -169,10 +171,9 @@ public class WxChatController {
         return "success";
     }
 
-    private String getReply(String unionId, String content, String traceId, HashMap<String, String> args) {
+    private String getReply(String unionId, String content, String traceId, HashMap<String, String> args,List<ChatRecordService.MsgItem> preChat) {
         String reply;
         try {
-            List<ChatRecordService.MsgItem> preChat = chatRecordService.getPreChatByUnionId(unionId);
             List<SummaryModel> preSummary = dailySummaryService.getPreSummaryByUnionId(unionId);
             String raw = agentClient.chat(unionId, content,preChat,preSummary, args);
             // 尝试解析 JSON {"reply":"xxx"}
