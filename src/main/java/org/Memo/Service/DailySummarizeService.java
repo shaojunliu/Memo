@@ -81,7 +81,7 @@ public class DailySummarizeService {
                 // upsert 本身应覆盖旧内容；手动触发会强制走到这里
                 summaryRepo.upsertSummary(
                         unionId, targetDate,
-                        res.getArticle(), res.getMoodKeywords(), res.getActionKeywords(), res.getArticleTitle(),
+                        res.getArticle(), res.getMoodKeywords(), res.getActionKeywords(), res.getMemoryPoint(), res.getAnalyzeResult(), res.getArticleTitle(),
                         res.getModel(), Optional.ofNullable(res.getTokenUsageJson()).orElse("{}")
                 );
 

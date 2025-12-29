@@ -1,6 +1,7 @@
 package org.Memo.Service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.Memo.DTO.RecordModel;
 import org.Memo.Entity.User;
 import org.Memo.Repo.ChatRecordRepository;
@@ -13,6 +14,7 @@ import java.time.temporal.ChronoUnit;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class MyRecordsService {
 
     private final UserRepository userRepository;
@@ -23,6 +25,7 @@ public class MyRecordsService {
 
     public RecordModel getMyRecords(String openId) {
         // 1) 念念天数（users.created_at → 到系统当前日期的天数，含当天）
+        log.info("getMyRecords openId:{}", openId);
         int nianNianDays = userRepository.findCreatedAtByOpenId(openId)
                 .map(createdAt -> {
                     // 你的库已存东八区，本地服务一般也按系统默认时区

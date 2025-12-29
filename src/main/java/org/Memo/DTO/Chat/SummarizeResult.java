@@ -26,6 +26,8 @@ public class SummarizeResult {
     private String moodKeywords;
 
     private String actionKeywords;
+    private String memoryPoint;
+    private String analyzeResult;
 
     private String articleTitle;
 

@@ -31,4 +31,6 @@ public class GetSummaryDetailRes {
 
     private String moodKeywords;
     private String actionKeywords;
+    private String memoryPoint;
+    private String analyzeResult;
 }

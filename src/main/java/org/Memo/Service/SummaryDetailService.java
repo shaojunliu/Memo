@@ -40,6 +40,8 @@ public class SummaryDetailService {
                     .content(nvl(e.getArticle()))
                     .moodKeywords(nvl(e.getMoodKeywords()))
                     .actionKeywords(nvl(e.getActionKeywords()))
+                    .memoryPoint(nvl(e.getMemoryPoint()))
+                    .analyzeResult(nvl(e.getAnalyzeResult()))
                     .build();
         }
         default -> throw new UnsupportedOperationException("暂不支持的 summaryType: " + type);
