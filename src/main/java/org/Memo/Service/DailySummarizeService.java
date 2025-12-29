@@ -34,7 +34,7 @@ public class DailySummarizeService {
     private final AgentClient agentClient; // 封装HTTP调用Agent
     @Value("${app.tz}") private String tz;
 
-    public void summarizeForDate(LocalDate targetDate, List<String> orderUnionIds, List<LocalDate> targetDates) {
+    public void summarizeForDate(LocalDate targetDate, List<String> orderUnionIds) {
         ZoneId zone = ZoneId.of(tz);
         Instant start = targetDate.atStartOfDay(zone).toInstant();
         Instant end   = targetDate.atStartOfDay(zone).plusDays(1).toInstant();
@@ -91,6 +91,8 @@ public class DailySummarizeService {
             }
         });
     }
+
+
 
     private String packMessages(List<ChatRecord> records, ZoneId zone) {
         StringBuilder sb = new StringBuilder(4096);
