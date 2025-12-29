@@ -93,6 +93,22 @@ public class DailySummarizeService {
     }
 
 
+    /**
+     * 批量刷新指定日期列表的所有用户总结（每个日期都会强制重算并 upsert 覆盖旧结果）。
+     */
+    public void summarizeForDates(List<LocalDate> targetDates) {
+        if (CollectionUtils.isEmpty(targetDates)) {
+            log.info("summarizeForDates empty targetDates");
+            return;
+        }
+        // 逐日执行，避免并发过高导致 Agent/DB 压力过大；如需更高并行度可在外层控制线程池。
+        for (LocalDate d : targetDates) {
+            if (d == null) {
+                continue;
+            }
+            summarizeForDate(d, null);
+        }
+    }
 
     private String packMessages(List<ChatRecord> records, ZoneId zone) {
         StringBuilder sb = new StringBuilder(4096);
