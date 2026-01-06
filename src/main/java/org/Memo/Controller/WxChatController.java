@@ -148,13 +148,13 @@ public class WxChatController {
                     var rec = recordService.createSession(unionId, now);
                     var sessionId = rec.getSessionId();
                     List<ChatRecordService.MsgItem> preChat = chatRecordService.getPreChatByUnionId(unionId);
-
+                    List<ChatRecordService.MsgItem> preChatFromUser = preChat.stream().filter(it-> "user".equals(it.role())).toList();
 
                     // 1. 记录用户消息
                     recordService.append(sessionId, "user", content, now);
 
                     // 2. 调用 Agent 获取回复
-                    String reply = getReply(unionId, content, traceId, args,preChat);
+                    String reply = getReply(unionId, content, traceId, args,preChatFromUser);
 
                     // 3. 写入助手消息
                     recordService.append(sessionId, "assistant", reply, Instant.now());
