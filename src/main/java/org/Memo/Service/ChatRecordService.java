@@ -6,10 +6,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.Memo.Entity.ChatRecord;
 import org.Memo.Repo.ChatRecordRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -20,6 +23,8 @@ import java.util.concurrent.*;
 @RequiredArgsConstructor
 @Slf4j
 public class ChatRecordService {
+
+    @Value("${app.tz}") private String tz;
 
     private final ChatRecordRepository repo;
     private final ObjectMapper om = new ObjectMapper();
@@ -96,16 +101,26 @@ public class ChatRecordService {
 
     // 简单的消息结构（用于序列化到 msgs）
     public record MsgItem(int seq, String ts, String role, String content) {}
+    public record MsgItemsSimple(String ts, String content) {}
 
-    public List<MsgItem> getPreChatByUnionId(String unionId) {
-        List<MsgItem> result = new ArrayList<>();
-        List<ChatRecord> records = repo.findByUnionId(unionId);
+    public List<MsgItemsSimple> getPreChatByUnionIdAndDay(String unionId) {
+        List<MsgItemsSimple> result = new ArrayList<>();
+        List<ChatRecord> records = repo.findByUnionIdLimit100(unionId);
         if (records == null || records.isEmpty()) return result;
         for (ChatRecord record : records) {
             String msgs = record.getMsgs();
             List<MsgItem> msgItems = parseMsgs(msgs);
-            result.addAll(msgItems);
+            List<MsgItemsSimple> msgItemsSimple = new ArrayList<>();
+
+            for (MsgItem msgItem : msgItems) {
+                if ("user".equals(msgItem.role())) {
+                    MsgItemsSimple simpleItem = new MsgItemsSimple(msgItem.ts, msgItem.content);
+                    msgItemsSimple.add(simpleItem);
+                }
+            }
+            result.addAll(msgItemsSimple);
         }
+        Collections.reverse(result);
         return result;
     }
 

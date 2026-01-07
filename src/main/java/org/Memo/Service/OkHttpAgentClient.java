@@ -54,7 +54,7 @@ public class OkHttpAgentClient implements AgentClient {
         }
     }
     /** 一问一答：发一条，收第一段回复返回（如需拼接流式，可扩展） */
-    public String chat(String openid, String message, List<ChatRecordService.MsgItem> preChat, List<SummaryModel> preDailySummary, HashMap<String, String> args) {
+    public String chat(String openid, String message, List<ChatRecordService.MsgItemsSimple> preChat, List<SummaryModel> preDailySummary, HashMap<String, String> args) {
         ChatRequest  chatRequest = new ChatRequest();
         chatRequest.setOpenid(openid);
         chatRequest.setMessage(message);
@@ -68,7 +68,7 @@ public class OkHttpAgentClient implements AgentClient {
     }
 
     @Override
-    public String chatWs(String openid, String message, List<ChatRecordService.MsgItem> preChat, List<SummaryModel> preDailySummary) {
+    public String chatWs(String openid, String message, List<ChatRecordService.MsgItemsSimple> preChat, List<SummaryModel> preDailySummary) {
         ChatRequest  chatRequest = new ChatRequest();
         chatRequest.setOpenid(openid);
         chatRequest.setMessage(message);

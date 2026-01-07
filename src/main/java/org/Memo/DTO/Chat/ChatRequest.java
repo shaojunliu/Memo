@@ -11,7 +11,7 @@ import java.util.List;
 public class ChatRequest {
     private String openid;
     private String message;
-    private List<ChatRecordService.MsgItem> preChat;
+    private List<ChatRecordService.MsgItemsSimple> preChat;
     private List<SummaryModel> preDailySummary;
     private HashMap<String,String> args;
 }

@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.Memo.DTO.SummaryModel;
 import org.Memo.Entity.User;
+import org.Memo.Repo.ChatRecordRepository;
 import org.Memo.Service.ChatRecordService;
 import org.Memo.Service.DailySummaryService;
 import org.Memo.Service.OkHttpAgentClient;
@@ -23,9 +24,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.Executor;
@@ -53,6 +52,9 @@ public class WxChatController {
 
     @Value("${wx.oa.secret}")
     private String oaSecret;
+
+    @Value("${app.tz}")
+    private String tz;
 
     // 和公众号后台填写一致
     private static final String WECHAT_TOKEN = "memo123";
@@ -147,14 +149,13 @@ public class WxChatController {
                     Instant now = Instant.now();
                     var rec = recordService.createSession(unionId, now);
                     var sessionId = rec.getSessionId();
-                    List<ChatRecordService.MsgItem> preChat = chatRecordService.getPreChatByUnionId(unionId);
-                    List<ChatRecordService.MsgItem> preChatFromUser = preChat.stream().filter(it-> "user".equals(it.role())).toList();
+                    List<ChatRecordService.MsgItemsSimple> preChat = chatRecordService.getPreChatByUnionIdAndDay(unionId);
 
                     // 1. 记录用户消息
                     recordService.append(sessionId, "user", content, now);
 
                     // 2. 调用 Agent 获取回复
-                    String reply = getReply(unionId, content, traceId, args,preChatFromUser);
+                    String reply = getReply(unionId, content, traceId, args, preChat);
 
                     // 3. 写入助手消息
                     recordService.append(sessionId, "assistant", reply, Instant.now());
@@ -171,7 +172,7 @@ public class WxChatController {
         return "success";
     }
 
-    private String getReply(String unionId, String content, String traceId, HashMap<String, String> args,List<ChatRecordService.MsgItem> preChat) {
+    private String getReply(String unionId, String content, String traceId, HashMap<String, String> args,List<ChatRecordService.MsgItemsSimple> preChat) {
         String reply;
         try {
             List<SummaryModel> preSummary = dailySummaryService.getPreSummaryByUnionId(unionId);

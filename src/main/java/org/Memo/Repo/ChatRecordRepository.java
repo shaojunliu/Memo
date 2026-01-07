@@ -74,4 +74,13 @@ public interface ChatRecordRepository extends JpaRepository<ChatRecord, Long> {
         ORDER BY cr.started_at ASC
         """, nativeQuery = true)
     List<ChatRecord> findByUnionId(@Param("openId") String unionId);
+
+    @Query(value = """
+        SELECT *
+        FROM chat_record cr
+        WHERE cr.open_id = :openId
+        ORDER BY cr.started_at DESC
+        LIMIT 100
+        """, nativeQuery = true)
+    List<ChatRecord> findByUnionIdLimit100(@Param("openId") String unionId);
 }
