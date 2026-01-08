@@ -103,20 +103,14 @@ public class ChatRecordService {
     public record MsgItem(int seq, String ts, String role, String content) {}
     public record MsgItemsSimple(String ts, String content) {}
 
-    public List<MsgItemsSimple> getPreChatByUnionIdAndDay(String unionId) {
-        List<MsgItemsSimple> result = new ArrayList<>();
+    public List<MsgItem> getPreChatByUnionIdAndDay(String unionId) {
+        List<MsgItem> result = new ArrayList<>();
         List<ChatRecord> records = repo.findByUnionIdLimit100(unionId);
         if (records == null || records.isEmpty()) return result;
         for (ChatRecord record : records) {
             String msgs = record.getMsgs();
             List<MsgItem> msgItems = parseMsgs(msgs);
-            List<MsgItemsSimple> msgItemsSimple = new ArrayList<>();
-
-            for (MsgItem msgItem : msgItems) {
-                MsgItemsSimple simpleItem = new MsgItemsSimple(msgItem.ts, msgItem.content);
-                msgItemsSimple.add(simpleItem);
-            }
-            result.addAll(msgItemsSimple);
+            result.addAll(msgItems);
         }
         Collections.reverse(result);
         return result;

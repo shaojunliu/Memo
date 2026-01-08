@@ -149,7 +149,7 @@ public class WxChatController {
                     Instant now = Instant.now();
                     var rec = recordService.createSession(unionId, now);
                     var sessionId = rec.getSessionId();
-                    List<ChatRecordService.MsgItemsSimple> preChat = chatRecordService.getPreChatByUnionIdAndDay(unionId);
+                    List<ChatRecordService.MsgItem> preChat = chatRecordService.getPreChatByUnionIdAndDay(unionId);
 
                     // 1. 记录用户消息
                     recordService.append(sessionId, "user", content, now);
@@ -172,7 +172,7 @@ public class WxChatController {
         return "success";
     }
 
-    private String getReply(String unionId, String content, String traceId, HashMap<String, String> args,List<ChatRecordService.MsgItemsSimple> preChat) {
+    private String getReply(String unionId, String content, String traceId, HashMap<String, String> args,List<ChatRecordService.MsgItem> preChat) {
         String reply;
         try {
             List<SummaryModel> preSummary = dailySummaryService.getPreSummaryByUnionId(unionId);
