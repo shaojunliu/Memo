@@ -113,10 +113,8 @@ public class ChatRecordService {
             List<MsgItemsSimple> msgItemsSimple = new ArrayList<>();
 
             for (MsgItem msgItem : msgItems) {
-                if ("user".equals(msgItem.role())) {
-                    MsgItemsSimple simpleItem = new MsgItemsSimple(msgItem.ts, msgItem.content);
-                    msgItemsSimple.add(simpleItem);
-                }
+                MsgItemsSimple simpleItem = new MsgItemsSimple(msgItem.ts, msgItem.content);
+                msgItemsSimple.add(simpleItem);
             }
             result.addAll(msgItemsSimple);
         }
