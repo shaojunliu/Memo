@@ -33,6 +33,12 @@
             <artifactId>okhttp</artifactId>
             <version>4.12.0</version>
         </dependency>
+        <!-- Guava：用于 access_token 内存缓存 -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>33.2.1-jre</version>
+        </dependency>
         <dependency>
             <groupId>org.hibernate.validator</groupId>
             <artifactId>hibernate-validator</artifactId>
