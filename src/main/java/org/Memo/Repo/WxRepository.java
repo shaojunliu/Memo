@@ -7,10 +7,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-import java.util.concurrent.TimeUnit;
-
 @Slf4j
 @Service
 public class WxRepository {
@@ -24,18 +20,7 @@ public class WxRepository {
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    /**
-     * 服务号 access_token 缓存
-     * 微信官方有效期 7200s，这里缓存 7000s，避免临界告诉期
-     */
-    private final Cache<String, String> oaAccessTokenCache = CacheBuilder.newBuilder().expireAfterWrite(7000, TimeUnit.SECONDS).build();
-
     public String getOfficialAccessToken() {
-        String cached = oaAccessTokenCache.getIfPresent("oa");
-        if (cached != null && !cached.isBlank()) {
-            return cached;
-        }
-
         String url = "https://api.weixin.qq.com/cgi-bin/token"
                 + "?grant_type=client_credential"
                 + "&appid=" + oaAppId
@@ -49,10 +34,7 @@ public class WxRepository {
             if (json.has("errcode")) {
                 throw new RuntimeException("getOfficialAccessToken error: " + resp);
             }
-
-            String token = json.get("access_token").asText();
-            oaAccessTokenCache.put("oa", token);
-            return token;
+            return json.get("access_token").asText();
         } catch (Exception e) {
             throw new RuntimeException("parse access_token failed: " + resp, e);
         }
