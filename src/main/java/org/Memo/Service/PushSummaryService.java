@@ -25,7 +25,7 @@ public class PushSummaryService {
     @Value("${wechat.miniapp.appid:wx24a59aa9e1797a8d}")
     private String miniAppId;
 
-    @Value("${wechat.miniapp.dailySummaryPagePath:pages/daily/index}")
+    @Value("${wechat.miniapp.dailySummaryPagePath:pages/detail/detail}")
     private String dailySummaryPagePath;
 
     public void sendDailySummary(String unionId, LocalDate d) {

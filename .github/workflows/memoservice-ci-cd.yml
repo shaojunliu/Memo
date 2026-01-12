@@ -6,7 +6,11 @@ on:
   workflow_dispatch: {}
 
 env:
-  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/memoservice
+  # 需要在 GitHub Secrets 配置：ACR_REGISTRY / ACR_NAMESPACE / ACR_USERNAME / ACR_PASSWORD
+  ACR_REGISTRY: ${{ secrets.ACR_REGISTRY }}                 # 例如 registry.cn-hangzhou.aliyuncs.com
+  ACR_NAMESPACE: ${{ secrets.ACR_NAMESPACE }}               # 例如 shaojunliu
+  ACR_IMAGE_NAME: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/memoservice
+
   DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/apps/stack' }}
   COMPOSE_FILE: ${{ secrets.COMPOSE_FILE || 'docker-compose.yml' }}
   COMPOSE_SRC: docker-compose.rendered.yml
@@ -19,7 +23,6 @@ jobs:
       image_tag: ${{ steps.vars.outputs.image_tag }}
     permissions:
       contents: read
-      packages: write
     steps:
       - uses: actions/checkout@v4
 
@@ -36,12 +39,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to GHCR
+      - name: Login to ACR
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ${{ env.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
 
       - name: Compute image tag (date + seq)
         id: vars
@@ -59,8 +62,8 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.image_tag }}
-            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.ACR_IMAGE_NAME }}:${{ steps.vars.outputs.image_tag }}
+            ${{ env.ACR_IMAGE_NAME }}:${{ github.sha }}
   upload-compose:
     needs: build-and-push
     runs-on: ubuntu-latest
@@ -71,8 +74,8 @@ jobs:
           set -e
           TAG="${{ needs.build-and-push.outputs.image_tag }}"
           echo "Using IMAGE_TAG=$TAG"
-          # 把 docker-compose.yml 里的 memoservice 镜像 tag 替换成新 tag，输出到 docker-compose.rendered.yml
-          sed -E "s#(image:\s*${{ env.IMAGE_NAME }}:).*#\\1${TAG}#" docker-compose.yml > "${{ env.COMPOSE_SRC }}"
+          # 将 compose 中 memoservice 的 image 强制替换为「ACR_IMAGE_NAME」+ 新 tag（国内拉取更快更稳）
+          sed -E "s#(image:\s*).*/memoservice:.*#\\1${{ env.ACR_IMAGE_NAME }}:${TAG}#" docker-compose.yml > "${{ env.COMPOSE_SRC }}"
           echo "Rendered compose:" && head -n 80 "${{ env.COMPOSE_SRC }}"
       - name: Upload compose to server
         uses: appleboy/scp-action@v0.1.7
@@ -96,13 +99,18 @@ jobs:
             DST="${{ env.DEPLOY_PATH }}/${{ env.COMPOSE_DST }}"
             if [ "$SRC" != "$DST" ]; then
               mkdir -p "$(dirname "$DST")"
+              # 备份线上正在使用的 compose（用于回滚），只保留一份最新备份
+              if [ -f "$DST" ]; then
+                cp -f "$DST" "${DST}.bak" || true
+              fi
               mv -f "$SRC" "$DST"
             else
               echo "Source equals destination ($SRC). Skip move."
             fi
 
   deploy:
-    needs: upload-compose
+    # 需要 build-and-push 的输出 image_tag；同时也依赖 upload-compose 已把 compose 更新到服务器
+    needs: [build-and-push, upload-compose]
     runs-on: ubuntu-latest
     steps:
       - name: SSH deploy
@@ -112,12 +120,134 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           script_stop: true
+          command_timeout: 30m
           script: |
-            docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" -p "${{ secrets.GHCR_READ_TOKEN }}"
-            cd "${{ env.DEPLOY_PATH }}"
-            echo "Deploying memoservice image tag: ${{ needs.build-and-push.outputs.image_tag }}"
-            # 如果有老的 memo 容器，还在占 8080，这里强制删掉
-            docker rm -f memo 2>/dev/null || true
-            docker compose -f "${{ env.COMPOSE_DST }}" pull ${{ env.SERVICE_NAME }}
-            docker compose -f "${{ env.COMPOSE_DST }}" up -d ${{ env.SERVICE_NAME }}
-            docker system prune -f
+            # 任何一步失败就退出（避免“半部署”状态）
+            set -euo pipefail
+
+            # 基础变量（便于读日志/改配置）
+            SERVICE="${{ env.SERVICE_NAME }}"
+            COMPOSE="${{ env.COMPOSE_DST }}"
+            WORKDIR="${{ env.DEPLOY_PATH }}"
+            HEALTH_URL="${{ secrets.MEMO_HEALTH_URL || 'http://127.0.0.1:8080/actuator/health' }}"
+
+            echo "[deploy] workdir=${WORKDIR} compose=${COMPOSE} service=${SERVICE}"
+            cd "${WORKDIR}"
+
+            # 确保 compose 文件存在（scp/移动失败时直接中止）
+            if [ ! -f "${COMPOSE}" ]; then
+              echo "[deploy][FATAL] compose file not found: ${WORKDIR}/${COMPOSE}"
+              ls -al
+              exit 1
+            fi
+
+            # 备份当前 compose（用于回滚）。upload-compose 也会生成 .bak，这里再兜底一次
+            cp -f "${COMPOSE}" "${COMPOSE}.bak2" 2>/dev/null || true
+
+            # ACR Registry（用于 docker login / 日志）
+            ACR_REGISTRY="${{ env.ACR_REGISTRY }}"
+
+            # 登录阿里云 ACR（增加重试，避免偶发网络抖动导致失败；因为 compose 里已使用 ACR 镜像）
+            for i in 1 2 3; do
+              echo "[deploy] docker login ${ACR_REGISTRY} (try ${i}/3)"
+              if docker login "${ACR_REGISTRY}" -u "${{ secrets.ACR_USERNAME }}" -p "${{ secrets.ACR_PASSWORD }}"; then
+                break
+              fi
+              if [ "$i" = "3" ]; then
+                echo "[deploy][FATAL] docker login ACR failed after 3 attempts"
+                exit 1
+              fi
+              sleep $((i * 3))
+            done
+
+            echo "[deploy] Deploying memoservice image tag: ${{ needs.build-and-push.outputs.image_tag }}"
+
+            # 预检查：compose 配置可解析（能提前暴露语法/变量问题）
+            echo "[deploy] docker compose config (validate)"
+            docker compose -f "${COMPOSE}" config >/dev/null
+
+            # Pull（增加重试 + 避免偶发网络慢导致失败）
+            for i in 1 2 3; do
+              echo "[deploy] docker compose pull ${SERVICE} (try ${i}/3)"
+              if docker compose -f "${COMPOSE}" pull --quiet "${SERVICE}"; then
+                break
+              fi
+              if [ "$i" = "3" ]; then
+                echo "[deploy][WARN] pull failed after 3 attempts, will try rollback"
+                ROLLBACK_REASON="pull_failed"
+                goto_rollback=1
+                break
+              fi
+              sleep $((i * 5))
+            done
+
+            # 如果 pull 已标记失败，进入回滚流程
+            if [ "${goto_rollback:-0}" = "1" ]; then
+              echo "[deploy] jump to rollback (reason=${ROLLBACK_REASON})"
+              goto_rollback=0
+              # 回滚：恢复上一份 compose，并重新 up
+              if [ -f "${COMPOSE}.bak" ]; then
+                echo "[rollback] restore ${COMPOSE}.bak -> ${COMPOSE}"
+                cp -f "${COMPOSE}.bak" "${COMPOSE}" || true
+              elif [ -f "${COMPOSE}.bak2" ]; then
+                echo "[rollback] restore ${COMPOSE}.bak2 -> ${COMPOSE}"
+                cp -f "${COMPOSE}.bak2" "${COMPOSE}" || true
+              else
+                echo "[rollback][FATAL] no compose backup found"
+                exit 1
+              fi
+              echo "[rollback] docker compose up -d --no-deps ${SERVICE}"
+              docker compose -f "${COMPOSE}" up -d --no-deps --remove-orphans "${SERVICE}" || true
+              exit 1
+            fi
+
+            # Up（只重启当前服务，不动依赖；并清理孤儿容器）
+            echo "[deploy] docker compose up -d --no-deps --remove-orphans ${SERVICE}"
+            docker compose -f "${COMPOSE}" up -d --no-deps --remove-orphans "${SERVICE}"
+
+            # 基于健康检查确认“真的起来了”（失败则回滚）
+            echo "[deploy] health check: ${HEALTH_URL}"
+            check_ok=0
+            for i in $(seq 1 30); do
+              if command -v curl >/dev/null 2>&1; then
+                if curl -fsS "${HEALTH_URL}" >/dev/null; then
+                  check_ok=1
+                  break
+                fi
+              else
+                if wget -qO- "${HEALTH_URL}" >/dev/null 2>&1; then
+                  check_ok=1
+                  break
+                fi
+              fi
+              echo "[deploy] waiting for healthy... (${i}/30)"
+              sleep 2
+            done
+
+            if [ "$check_ok" != "1" ]; then
+              echo "[deploy][WARN] health check failed, rollback to previous compose"
+              # 回滚：优先使用 upload-compose 生成的 .bak
+              if [ -f "${COMPOSE}.bak" ]; then
+                cp -f "${COMPOSE}.bak" "${COMPOSE}" || true
+              elif [ -f "${COMPOSE}.bak2" ]; then
+                cp -f "${COMPOSE}.bak2" "${COMPOSE}" || true
+              else
+                echo "[rollback][FATAL] no compose backup found"
+                exit 1
+              fi
+              echo "[rollback] docker compose up -d --no-deps --remove-orphans ${SERVICE}"
+              docker compose -f "${COMPOSE}" up -d --no-deps --remove-orphans "${SERVICE}" || true
+
+              # 输出容器日志片段，方便定位（不影响回滚结果）
+              echo "[deploy] last logs for ${SERVICE} (tail 200)"
+              docker logs --tail 200 "${SERVICE}" 2>/dev/null || true
+
+              exit 1
+            fi
+
+            echo "[deploy] SUCCESS: service is healthy"
+
+            # 轻量清理：保留最近缓存，只清理 7 天前的资源（避免每次把缓存清光）
+            docker image prune -af --filter "until=168h" || true
+            docker container prune -f --filter "until=168h" || true
+            docker network prune -f --filter "until=168h" || true
