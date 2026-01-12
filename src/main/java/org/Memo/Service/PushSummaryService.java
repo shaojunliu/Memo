@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 
 @Slf4j
 @Service
@@ -69,7 +70,10 @@ public class PushSummaryService {
 
         try {
             String accessToken = wxRepository.getOfficialAccessToken();
+            //客服消息
             wechatOfficialAccountClient.sendTextWithMiniProgram(accessToken, oaOpenId, content, miniAppId, pagePath);
+            //wechatOfficialAccountClient.sendTemplateMessage(accessToken, oaOpenId, "templateId", miniAppId, pagePath,new HashMap<>());
+
 
             log.info("sendDailySummary success: unionId={}, date={}, oaOpenId={}", unionId, d, oaOpenId);
         } catch (Exception e) {

@@ -10,6 +10,7 @@ env:
   ACR_REGISTRY: ${{ secrets.ACR_REGISTRY }}                 # 例如 registry.cn-hangzhou.aliyuncs.com
   ACR_NAMESPACE: ${{ secrets.ACR_NAMESPACE }}               # 例如 shaojunliu
   ACR_IMAGE_NAME: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/memoservice
+  ACR_AGENT_IMAGE_NAME: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/agent
 
   DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/apps/stack' }}
   COMPOSE_FILE: ${{ secrets.COMPOSE_FILE || 'docker-compose.yml' }}
@@ -46,13 +47,12 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      - name: Compute image tag (date + seq)
+      - name: Compute image tag (Beijing time)
         id: vars
         run: |
-          DATE=$(date +%Y-%m-%d)
-          # GitHub run_number 会自增，这里取后三位当序号（001/002/...）
-          SEQ=$(printf "%03d" $(( ${{ github.run_number }} % 1000 )) )
-          TAG="${DATE}-${SEQ}"
+          # 使用北京时间（Asia/Shanghai）生成镜像 tag：YYYY-MM-DD-HHMM，例如 2026-01-12-1718
+          TZ=Asia/Shanghai
+          TAG=$(date +%Y-%m-%d-%H%M)
           echo "image_tag=${TAG}" >> $GITHUB_OUTPUT
 
       - name: Build & Push Image
@@ -62,8 +62,8 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
+            # 只推送一个 tag，避免 ACR 出现两条“版本”；tag 为北京时间 YYYY-MM-DD-HHMM
             ${{ env.ACR_IMAGE_NAME }}:${{ steps.vars.outputs.image_tag }}
-            ${{ env.ACR_IMAGE_NAME }}:${{ github.sha }}
   upload-compose:
     needs: build-and-push
     runs-on: ubuntu-latest
@@ -74,8 +74,10 @@ jobs:
           set -e
           TAG="${{ needs.build-and-push.outputs.image_tag }}"
           echo "Using IMAGE_TAG=$TAG"
-          # 将 compose 中 memoservice 的 image 强制替换为「ACR_IMAGE_NAME」+ 新 tag（国内拉取更快更稳）
-          sed -E "s#(image:\s*).*/memoservice:.*#\\1${{ env.ACR_IMAGE_NAME }}:${TAG}#" docker-compose.yml > "${{ env.COMPOSE_SRC }}"
+          # 渲染 compose：同时固定 memoservice/agent 的镜像地址与 tag，避免服务器端变量缺失导致 config/pull 失败
+          cp docker-compose.yml "${{ env.COMPOSE_SRC }}"
+          sed -i -E "s#(image:\s*).*/memoservice:.*#\\1${{ env.ACR_IMAGE_NAME }}:${TAG}#" "${{ env.COMPOSE_SRC }}"
+          sed -i -E "s#(image:\s*).*/agent:.*#\\1${{ env.ACR_AGENT_IMAGE_NAME }}:${TAG}#" "${{ env.COMPOSE_SRC }}"
           echo "Rendered compose:" && head -n 80 "${{ env.COMPOSE_SRC }}"
       - name: Upload compose to server
         uses: appleboy/scp-action@v0.1.7
