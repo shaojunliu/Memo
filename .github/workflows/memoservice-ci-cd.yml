@@ -61,8 +61,8 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
+          # 只推送一个 tag，避免 ACR 出现两条“版本”；tag 为北京时间 YYYY-MM-DD-HHMM
           tags: |
-            # 只推送一个 tag，避免 ACR 出现两条“版本”；tag 为北京时间 YYYY-MM-DD-HHMM
             ${{ env.ACR_IMAGE_NAME }}:${{ steps.vars.outputs.image_tag }}
   upload-compose:
     needs: build-and-push
