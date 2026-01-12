@@ -18,8 +18,8 @@ services:
       - appnet
 
   memoservice:
-    # CI/部署可通过在 /apps/stack/.env 里设置 MEMOSERVICE_TAG 来指定镜像版本；不设置则默认 latest
-    image: ghcr.io/shaojunliu/memoservice:${MEMOSERVICE_TAG:-latest}
+    # 默认使用阿里云 ACR（CI/部署也可在渲染时强制替换具体 tag）
+    image: ${ACR_REGISTRY}/${ACR_NAMESPACE}/memoservice:${MEMOSERVICE_TAG:-latest}
     container_name: memoservice
     env_file:
       - /apps/stack/.env
@@ -53,8 +53,8 @@ services:
       APP_AGENT_BASE_URL: ws://agent:8001/ws/chat   # 内网调用
 
   agent:
-    # CI/部署可通过在 /apps/stack/.env 里设置 AGENT_TAG 来指定镜像版本；不设置则默认 latest
-    image: ghcr.io/shaojunliu/agent:${AGENT_TAG:-latest}
+    # 默认使用阿里云 ACR（agent 可由其独立 CI 注入时间戳 tag，例如 2026-01-12-1718）
+    image: ${ACR_REGISTRY}/${ACR_NAMESPACE}/agent:${AGENT_TAG:-latest}
     container_name: agent
     env_file:
       - /apps/stack/.env

@@ -51,8 +51,7 @@ jobs:
         id: vars
         run: |
           # 使用北京时间（Asia/Shanghai）生成镜像 tag：YYYY-MM-DD-HHMM，例如 2026-01-12-1718
-          TZ=Asia/Shanghai
-          TAG=$(date +%Y-%m-%d-%H%M)
+          TAG=$(TZ=Asia/Shanghai date +%Y-%m-%d-%H%M)
           echo "image_tag=${TAG}" >> $GITHUB_OUTPUT
 
       - name: Build & Push Image
