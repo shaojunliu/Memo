@@ -16,6 +16,8 @@ import java.util.Map;
 public class WechatOfficialAccountClient {
 
     private static final String SEND_CUSTOM_MESSAGE_URL = "https://api.weixin.qq.com/cgi-bin/message/custom/send?access_token=%s";
+    // 小程序卡片缩略图（永久素材 media_id）
+    private static final String THUMB_MEDIA_ID = "B3O_uGCaPAvNWE1hxoLb5WSH_ud7aYe7F6JDXxVtBPW87kSa3SZbsSSaqXmYL0zN";
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -38,7 +40,7 @@ public class WechatOfficialAccountClient {
             miniProgramPage.put("title", content);
             miniProgramPage.put("appid", miniAppId);
             miniProgramPage.put("pagepath", pagePath);
-
+            miniProgramPage.put("thumb_media_id", THUMB_MEDIA_ID);
             payload.put("miniprogrampage", miniProgramPage);
 
             String url = String.format(SEND_CUSTOM_MESSAGE_URL, accessToken);
