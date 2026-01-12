@@ -58,14 +58,10 @@ public class PushSummaryService {
 
         // 3) 组织小程序落地页（你可以按你的页面结构改 pagePath）
         String pagePath = dailySummaryPagePath;
-        if (pagePath.contains("?")) {
-            pagePath = pagePath + "&date=" + d;
-        } else {
-            pagePath = pagePath + "?date=" + d;
-        }
+        pagePath = pagePath + "?articleId=" + summary.getId() + "&summaryType=Daily";
 
         // 4) 发送服务号消息（这里走“客服消息/模板消息”均可，由 client 内部实现）
-        String content = "📝 " + title + "，点击进入查看";
+        String content = "📝 " + "今日回响已生成!" + "点击进入查看";
         if (miniAppId == null || miniAppId.isBlank()) {
             log.warn("sendDailySummary skip: miniAppId not configured, unionId={}, date={}, oaOpenId={}", unionId, d, oaOpenId);
             return;
