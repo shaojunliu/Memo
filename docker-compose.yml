@@ -96,7 +96,10 @@ services:
   # 首次签发证书用的一次性容器；签发成功后即可不再使用
   certbot_init:
     image: certbot/certbot
+    profiles:
+      - certbot
     container_name: certbot-init
+    restart: "no"
     volumes:
       - /apps/stack/certbot/www:/var/www/certbot
       - /apps/stack/letsencrypt:/etc/letsencrypt
