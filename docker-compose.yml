@@ -16,11 +16,21 @@ services:
       - "5432:5432"
     networks:
       - appnet
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U HPLB -d memo -h 127.0.0.1 -p 5432"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   memoservice:
     # 默认使用阿里云 ACR（CI/部署也可在渲染时强制替换具体 tag）
     image: ${ACR_REGISTRY}/${ACR_NAMESPACE}/memoservice:${MEMOSERVICE_TAG:-latest}
     container_name: memoservice
+    depends_on:
+      postgres:
+        condition: service_healthy
     env_file:
       - /apps/stack/.env
     expose:
@@ -81,7 +91,8 @@ services:
     image: nginx:stable
     container_name: memo-nginx
     depends_on:
-      - memoservice
+      memoservice:
+        condition: service_healthy
     ports:
       - "80:80"
       - "443:443"
