@@ -10,6 +10,15 @@ import org.springframework.web.client.RestTemplate;
 @Slf4j
 @Service
 public class WxRepository {
+    // 使用小程序的 appid / secret（用于订阅消息等）
+    @Value("${wx.appid}")
+    private String miniAppId;
+
+    @Value("${wx.secret}")
+    private String miniSecret;
+
+
+
     // 使用服务号的 appid / secret（不要用小程序的）
     @Value("${wx.oa.appid}")
     private String oaAppId;
@@ -19,6 +28,33 @@ public class WxRepository {
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    /**
+     * 获取小程序 access_token
+     * 仅用于：小程序订阅消息等小程序接口
+     */
+    public String getMiniProgramAccessToken() {
+
+        String url = "https://api.weixin.qq.com/cgi-bin/token"
+                + "?grant_type=client_credential"
+                + "&appid=" + miniAppId
+                + "&secret=" + miniSecret;
+
+        log.info("Request MINI access_token: appid={}", miniAppId);
+
+        String resp = restTemplate.getForObject(url, String.class);
+
+        try {
+            var json = objectMapper.readTree(resp);
+            if (json.has("errcode")) {
+                throw new RuntimeException("getMiniProgramAccessToken error: " + resp);
+            }
+            return json.get("access_token").asText();
+        } catch (Exception e) {
+            throw new RuntimeException("parse mini access_token failed: " + resp, e);
+        }
+    }
+
 
     public String getOfficialAccessToken() {
         String url = "https://api.weixin.qq.com/cgi-bin/token"

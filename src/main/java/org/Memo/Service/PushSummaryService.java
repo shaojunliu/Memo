@@ -70,7 +70,7 @@ public class PushSummaryService {
         }
 
         try {
-            String accessToken = wxRepository.getOfficialAccessToken();
+            String accessToken = wxRepository.getMiniProgramAccessToken();
             //客服消息
             //wechatOfficialAccountClient.sendTextWithMiniProgram(accessToken, oaOpenId, content, miniAppId, pagePath);
 
