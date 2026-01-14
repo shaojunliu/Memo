@@ -80,7 +80,7 @@ public class PushSummaryService {
             data.put("thing1", new HashMap<>() {{put("value", title);}});
             // time2：提醒时间
             data.put("time2", new HashMap<>() {{put("value", d.toString());}});
-            wechatOfficialAccountClient.sendMiniProgramSubscribeMessage(accessToken, oaOpenId, "OKd5nPgdYWC_VbqcIADb-luwHpvbV4suELCLBI7gyag", miniAppId, pagePath,data);
+            wechatOfficialAccountClient.sendMiniProgramSubscribeMessage(accessToken, user.getOpenId(), "OKd5nPgdYWC_VbqcIADb-luwHpvbV4suELCLBI7gyag", pagePath,data);
 
 
             log.info("sendDailySummary success: unionId={}, date={}, oaOpenId={}", unionId, d, oaOpenId);
