@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -71,8 +72,15 @@ public class PushSummaryService {
         try {
             String accessToken = wxRepository.getOfficialAccessToken();
             //客服消息
-            wechatOfficialAccountClient.sendTextWithMiniProgram(accessToken, oaOpenId, content, miniAppId, pagePath);
-            //wechatOfficialAccountClient.sendTemplateMessage(accessToken, oaOpenId, "templateId", miniAppId, pagePath,new HashMap<>());
+            //wechatOfficialAccountClient.sendTextWithMiniProgram(accessToken, oaOpenId, content, miniAppId, pagePath);
+
+            // 组装模板消息 data（字段名必须与模板完全一致）
+            HashMap<String, Map<String, String>> data = new HashMap<>();
+            // thing1：记录名称
+            data.put("thing1", new HashMap<>() {{put("value", title);}});
+            // time2：提醒时间
+            data.put("time2", new HashMap<>() {{put("value", d.toString());}});
+            wechatOfficialAccountClient.sendTemplateMessage(accessToken, oaOpenId, "OKd5nPgdYWC_VbqcIADb-luwHpvbV4suELCLBI7gyag", miniAppId, pagePath,data);
 
 
             log.info("sendDailySummary success: unionId={}, date={}, oaOpenId={}", unionId, d, oaOpenId);
